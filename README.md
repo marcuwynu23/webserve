@@ -9,7 +9,7 @@
   <img src="https://img.shields.io/github/license/marcuwynu23/webserve.svg" alt="License Badge"/>
 </p>
 
-A blazing-fast static file and SPA server written in **Rust**, powered by [`warp`](https://crates.io/crates/warp). Supports **live reload**, SPA fallback, and directory serving — like `npm serve`, but compiled and production-ready.
+A blazing-fast static file and SPA Web server written in **Rust**, powered by [`warp`](https://crates.io/crates/warp). Supports **live reload**, SPA fallback, and directory serving — like `npm serve`, but compiled and production-ready.
 
 ---
 
