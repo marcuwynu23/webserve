@@ -1,0 +1,16 @@
+[package]
+name = "webserve"
+version = "0.1.0"
+edition = "2024"
+authors = ["Mark Wayne Menorca <marcuwynu23@gmail.com>"]
+description = "A lightweight web server"
+license = "MIT"
+[dependencies]
+warp = "0.3.7"
+tokio = { version = "1", features = ["full"] }
+structopt = "0.3"
+notify = "6"
+futures-util = "0.3"
+
+[[bin]]
+name = "webserve"
