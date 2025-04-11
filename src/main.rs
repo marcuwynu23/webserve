@@ -1,4 +1,5 @@
 use futures_util::SinkExt;
+use mime_guess::from_path;
 use notify::{RecommendedWatcher, RecursiveMode, Watcher};
 use std::convert::Infallible;
 use std::net::SocketAddr;
@@ -10,7 +11,7 @@ use std::time::Duration;
 use structopt::StructOpt;
 use tokio::fs::{self, File};
 use tokio::io::AsyncReadExt;
-use warp::http::{Response, StatusCode};
+use warp::http::{Response, StatusCode, header::CONTENT_TYPE};
 use warp::{Filter, ws::Message};
 
 #[derive(StructOpt, Debug)]
@@ -112,15 +113,25 @@ async fn main() {
                         return Ok::<_, Infallible>(Response::builder().status(StatusCode::NOT_FOUND).body(Vec::new()).unwrap());
                     }
 
+                    let mime_type = from_path(&file_path).first_or_octet_stream();
                     let response = if watch_enabled && file_path.ends_with("index.html") {
                         if let Ok(mut content) = String::from_utf8(buffer.clone()) {
                             content.push_str("<script>const socket = new WebSocket(`ws://${location.host}/reload`); socket.onmessage = () => location.reload();</script>");
-                            Response::builder().body(content.into_bytes()).unwrap()
+                            Response::builder()
+                                .header(CONTENT_TYPE, "text/html")
+                                .body(content.into_bytes())
+                                .unwrap()
                         } else {
-                            Response::builder().body(buffer).unwrap()
+                            Response::builder()
+                                .header(CONTENT_TYPE, mime_type.as_ref())
+                                .body(buffer)
+                                .unwrap()
                         }
                     } else {
-                        Response::builder().body(buffer).unwrap()
+                        Response::builder()
+                            .header(CONTENT_TYPE, mime_type.as_ref())
+                            .body(buffer)
+                            .unwrap()
                     };
 
                     Ok::<_, Infallible>(response)
