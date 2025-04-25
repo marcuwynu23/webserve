@@ -1,0 +1,18 @@
+image: rust:latest
+
+definitions:
+  caches:
+    cargo: ~/.cargo/registry
+
+pipelines:
+  branches:
+    main:
+      - step:
+          name: Build and Test Rust App
+          caches:
+            - cargo
+          script:
+            - rustup update stable
+            - rustup component add rustfmt clippy
+            - cargo build --release
+            - cargo test
