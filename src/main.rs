@@ -1,4 +1,5 @@
-use futures_util::SinkExt;
+use futures::SinkExt;
+
 use mime_guess::from_path;
 use notify::{RecommendedWatcher, RecursiveMode, Watcher};
 use std::convert::Infallible;
@@ -33,19 +34,44 @@ struct ServeOptions {
     watch: bool,
 }
 
+async fn list_directory_contents(file_path: &std::path::Path) -> String {
+    let mut dir_list = String::new();
+    let mut dir_entries = fs::read_dir(file_path).await.unwrap(); // ReadDir as a stream
+
+    dir_list.push_str("<h4>Directory listing for </h4><ul>");
+
+    // Asynchronously iterate over the directory entries using next()
+    while let Some(entry) = dir_entries.next_entry().await.unwrap() {
+        let path = entry.path();
+        let name = path.file_name().unwrap().to_string_lossy();
+        dir_list.push_str(&format!("<li><a href=\"{}\" style=\"text-decoration: none; font-size: 1.1em; display: block;\">{}</a></li>", name, name));
+    }
+
+    dir_list.push_str("</ul>");
+    dir_list
+}
+
 #[tokio::main]
 async fn main() {
-    let options = Arc::new(ServeOptions::from_args());
+    let options = ServeOptions::from_args();
+
+    // Show help if no arguments are provided
+    if options.host.is_empty() && options.port == 8080 && options.directory.is_none() {
+        ServeOptions::clap().print_long_help().unwrap();
+        return;
+    }
 
     let addr: SocketAddr = format!("{}:{}", options.host, options.port)
         .parse()
         .expect("Invalid host or port");
+
     let static_dir = Arc::new(
         options
             .directory
             .clone()
             .unwrap_or_else(|| std::env::current_dir().unwrap()),
     );
+
     let spa_enabled = options.spa;
     let watch_enabled = options.watch;
     let (reload_tx, _) = tokio::sync::broadcast::channel::<()>(16);
@@ -58,7 +84,7 @@ async fn main() {
             let mut watcher: RecommendedWatcher = notify::recommended_watcher(move |res| {
                 if let Ok(event) = res {
                     println!("🔁 File change detected: {:?}", event);
-                    let _ = tx.send(());
+                    let _ = tx.send(()); // Trigger reload when file changes
                 }
             })
             .expect("Failed to create watcher");
@@ -85,70 +111,65 @@ async fn main() {
             })
         });
 
-        let static_files = {
-            let static_dir = Arc::clone(&static_dir);
-            warp::path::full()
-                .and(warp::get())
-                .and_then(move |full_path: warp::path::FullPath| {
-                    let static_dir = Arc::clone(&static_dir);
-                    let spa_enabled = spa_enabled;
-                    let watch_enabled = watch_enabled;
-                    async move {
-                        let req_path = full_path.as_str();
-                        let mut file_path = static_dir.join(req_path.trim_start_matches("/"));
-        
-                        let metadata = fs::metadata(&file_path).await.ok();
-                        if metadata.map(|m| m.is_dir()).unwrap_or(false) || req_path == "/" {
-                            file_path = file_path.join("index.html");
-                        }
-        
-                        if spa_enabled && fs::metadata(&file_path).await.is_err() {
+    let static_files = {
+        let static_dir = Arc::clone(&static_dir);
+        warp::path::full()
+            .and(warp::get())
+            .and_then(move |full_path: warp::path::FullPath| {
+                let static_dir = Arc::clone(&static_dir);
+                let spa_enabled = spa_enabled;
+                async move {
+                    let req_path = full_path.as_str();
+                    let mut file_path = static_dir.join(req_path.trim_start_matches("/"));
+
+                    // Check if the requested path is a directory
+                    let metadata = fs::metadata(&file_path).await.ok();
+                    if metadata.map(|m| m.is_dir()).unwrap_or(false) {
+                        // If it's a directory and SPA is enabled, redirect to index.html
+                        if spa_enabled {
                             file_path = static_dir.join("index.html");
-                        }
-        
-                        let mut buffer = Vec::new();
-                        if let Ok(mut file) = File::open(&file_path).await {
-                            file.read_to_end(&mut buffer).await.unwrap();
                         } else {
-                            return Ok::<_, Infallible>(Response::builder().status(StatusCode::NOT_FOUND).body(Vec::new()).unwrap());
-                        }
-        
-                        // Determine MIME type for the file
-                        let mime_type = from_path(&file_path).first_or_octet_stream();
-        
-                        // Handle special case for JS files
-                        let content_type = if file_path.extension().unwrap_or_default() == "js" {
-                            "application/javascript"
-                        } else {
-                            mime_type.as_ref()
-                        };
-        
-                        let response = if watch_enabled && file_path.ends_with("index.html") {
-                            if let Ok(mut content) = String::from_utf8(buffer.clone()) {
-                                content.push_str("<script>const socket = new WebSocket(`ws://${location.host}/reload`); socket.onmessage = () => location.reload();</script>");
+                            // Return directory listing if index.html is not found
+                            let dir_listing = list_directory_contents(&file_path).await;
+                            return Ok::<_, Infallible>(
                                 Response::builder()
+                                    .status(StatusCode::OK)
                                     .header(CONTENT_TYPE, "text/html")
-                                    .body(content.into_bytes())
-                                    .unwrap()
-                            } else {
-                                Response::builder()
-                                    .header(CONTENT_TYPE, content_type)
-                                    .body(buffer)
-                                    .unwrap()
-                            }
-                        } else {
-                            Response::builder()
-                                .header(CONTENT_TYPE, content_type)
-                                .body(buffer)
-                                .unwrap()
-                        };
-        
-                        Ok::<_, Infallible>(response)
+                                    .body(dir_listing.into_bytes())
+                                    .unwrap(),
+                            );
+                        }
                     }
-                })
-        };
-        
-        
+
+                    // Handle files (non-directory)
+                    let mut buffer = Vec::new();
+                    if let Ok(mut file) = File::open(&file_path).await {
+                        file.read_to_end(&mut buffer).await.unwrap();
+                    } else {
+                        return Ok::<_, Infallible>(
+                            Response::builder()
+                                .status(StatusCode::NOT_FOUND)
+                                .body(Vec::new())
+                                .unwrap(),
+                        );
+                    }
+
+                    let mime_type = from_path(&file_path).first_or_octet_stream();
+                    let content_type = if file_path.extension().unwrap_or_default() == "js" {
+                        "application/javascript"
+                    } else {
+                        mime_type.as_ref()
+                    };
+
+                    let response = Response::builder()
+                        .header(CONTENT_TYPE, content_type)
+                        .body(buffer)
+                        .unwrap();
+
+                    Ok::<_, Infallible>(response)
+                }
+            })
+    };
 
     let routes = reload_ws.or(static_files);
 
