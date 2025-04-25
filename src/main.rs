@@ -85,59 +85,70 @@ async fn main() {
             })
         });
 
-    let static_files = {
-        let static_dir = Arc::clone(&static_dir);
-        warp::path::full()
-            .and(warp::get())
-            .and_then(move |full_path: warp::path::FullPath| {
-                let static_dir = Arc::clone(&static_dir);
-                let spa_enabled = spa_enabled;
-                let watch_enabled = watch_enabled;
-                async move {
-                    let req_path = full_path.as_str();
-                    let mut file_path = static_dir.join(req_path.trim_start_matches("/"));
-
-                    let metadata = fs::metadata(&file_path).await.ok();
-                    if metadata.map(|m| m.is_dir()).unwrap_or(false) || req_path == "/" {
-                        file_path = file_path.join("index.html");
-                    }
-
-                    if spa_enabled && fs::metadata(&file_path).await.is_err() {
-                        file_path = static_dir.join("index.html");
-                    }
-
-                    let mut buffer = Vec::new();
-                    if let Ok(mut file) = File::open(&file_path).await {
-                        file.read_to_end(&mut buffer).await.unwrap();
-                    } else {
-                        return Ok::<_, Infallible>(Response::builder().status(StatusCode::NOT_FOUND).body(Vec::new()).unwrap());
-                    }
-
-                    let mime_type = from_path(&file_path).first_or_octet_stream();
-                    let response = if watch_enabled && file_path.ends_with("index.html") {
-                        if let Ok(mut content) = String::from_utf8(buffer.clone()) {
-                            content.push_str("<script>const socket = new WebSocket(`ws://${location.host}/reload`); socket.onmessage = () => location.reload();</script>");
-                            Response::builder()
-                                .header(CONTENT_TYPE, "text/html")
-                                .body(content.into_bytes())
-                                .unwrap()
+        let static_files = {
+            let static_dir = Arc::clone(&static_dir);
+            warp::path::full()
+                .and(warp::get())
+                .and_then(move |full_path: warp::path::FullPath| {
+                    let static_dir = Arc::clone(&static_dir);
+                    let spa_enabled = spa_enabled;
+                    let watch_enabled = watch_enabled;
+                    async move {
+                        let req_path = full_path.as_str();
+                        let mut file_path = static_dir.join(req_path.trim_start_matches("/"));
+        
+                        let metadata = fs::metadata(&file_path).await.ok();
+                        if metadata.map(|m| m.is_dir()).unwrap_or(false) || req_path == "/" {
+                            file_path = file_path.join("index.html");
+                        }
+        
+                        if spa_enabled && fs::metadata(&file_path).await.is_err() {
+                            file_path = static_dir.join("index.html");
+                        }
+        
+                        let mut buffer = Vec::new();
+                        if let Ok(mut file) = File::open(&file_path).await {
+                            file.read_to_end(&mut buffer).await.unwrap();
+                        } else {
+                            return Ok::<_, Infallible>(Response::builder().status(StatusCode::NOT_FOUND).body(Vec::new()).unwrap());
+                        }
+        
+                        // Determine MIME type for the file
+                        let mime_type = from_path(&file_path).first_or_octet_stream();
+        
+                        // Handle special case for JS files
+                        let content_type = if file_path.extension().unwrap_or_default() == "js" {
+                            "application/javascript"
+                        } else {
+                            mime_type.as_ref()
+                        };
+        
+                        let response = if watch_enabled && file_path.ends_with("index.html") {
+                            if let Ok(mut content) = String::from_utf8(buffer.clone()) {
+                                content.push_str("<script>const socket = new WebSocket(`ws://${location.host}/reload`); socket.onmessage = () => location.reload();</script>");
+                                Response::builder()
+                                    .header(CONTENT_TYPE, "text/html")
+                                    .body(content.into_bytes())
+                                    .unwrap()
+                            } else {
+                                Response::builder()
+                                    .header(CONTENT_TYPE, content_type)
+                                    .body(buffer)
+                                    .unwrap()
+                            }
                         } else {
                             Response::builder()
-                                .header(CONTENT_TYPE, mime_type.as_ref())
+                                .header(CONTENT_TYPE, content_type)
                                 .body(buffer)
                                 .unwrap()
-                        }
-                    } else {
-                        Response::builder()
-                            .header(CONTENT_TYPE, mime_type.as_ref())
-                            .body(buffer)
-                            .unwrap()
-                    };
-
-                    Ok::<_, Infallible>(response)
-                }
-            })
-    };
+                        };
+        
+                        Ok::<_, Infallible>(response)
+                    }
+                })
+        };
+        
+        
 
     let routes = reload_ws.or(static_files);
 
