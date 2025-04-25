@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>📄 myserve - Static & SPA File Server</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link
+      rel="stylesheet"
+      href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.0/css/bootstrap.min.css"
+    />
+    <style>
+      body {
+        padding: 2rem;
+        font-family: "Segoe UI", sans-serif;
+        line-height: 1.6;
+      }
+      code {
+        background: #f5f5f5;
+        padding: 0.2rem 0.4rem;
+        border-radius: 3px;
+        font-family: monospace;
+      }
+      pre code {
+        display: block;
+        padding: 1rem;
+      }
+      h1,
+      h4,
+      h3,
+      h4 {
+        margin-top: 2rem;
+      }
+      ul {
+        margin-top: 0.5rem;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <h1>🚀 myserve</h1>
+      <p>
+        <strong>myserve</strong> is a lightweight static file and SPA (Single
+        Page Application) server with optional live reload support using
+        WebSockets. Built with Rust, <code>tokio</code>, and <code>warp</code>,
+        it’s ideal for development workflows or serving local apps.
+      </p>
+      <!-- Add this whole section below the Features or Usage section -->
+      <h4>📖 How It Works</h4>
+      <p>
+        <strong><code>myserve</code></strong> is a fast and minimalist static
+        file and SPA server built with Rust. It’s designed for developers who
+        need a simple and powerful way to preview files locally, serve frontend
+        apps, or test directory structures. When you run <code>myserve</code>,
+        it launches an HTTP server bound to the provided <code>--host</code> and
+        <code>--port</code> and serves the contents of the given directory.
+      </p>
+
+      <p>
+        If a directory is accessed, and you haven’t enabled SPA mode, the server
+        dynamically generates a clean HTML directory listing so you can browse
+        files directly in your browser — no frills, no BS, just fast results. On
+        the other hand, if SPA mode is enabled (<code>--spa</code>),
+        <code>myserve</code> ensures that all unknown paths fallback to
+        <code>index.html</code>, which is essential for client-side routing in
+        frameworks like React, Vue, or Angular.
+      </p>
+
+      <p>
+        Now here’s the 🔥 part: with <code>--watch</code> enabled,
+        <strong>live reload</strong> kicks in. <code>myserve</code> watches your
+        project folder and sends a WebSocket message whenever something changes
+        (HTML, CSS, JS, anything). Add a tiny script to your frontend, and your
+        browser auto-refreshes every time you save. It’s not just
+        convenient—it’s addictive.
+      </p>
+
+      <p>
+        No over-complicated configs. No dependency hell. Just run it, code, and
+        reload in peace.
+      </p>
+
+      <p>
+        <strong
+          >Use it once and you'll wonder why you didn’t build this
+          yourself.</strong
+        >
+        But now you don’t have to.
+      </p>
+
+      <h4>📦 Features</h4>
+      <ul>
+        <li>Static file server with directory listing support</li>
+        <li>Single Page Application (SPA) mode support</li>
+        <li>Live reload using WebSockets on file changes</li>
+        <li>Customizable host, port, and directory</li>
+        <li>Built with async/await using <code>tokio</code> runtime</li>
+      </ul>
+
+      <h4>⚙️ Installation</h4>
+      <p>Ensure you have <code>cargo</code> (Rust) installed.</p>
+      <pre><code>git clone https://github.com/yourusername/myserve.git
+cd myserve
+cargo build --release</code></pre>
+
+      <h4>🚀 Usage</h4>
+      <pre><code>./myserve [OPTIONS]</code></pre>
+
+      <h3>Options</h3>
+      <ul>
+        <li>
+          <code>-p, --port &lt;PORT&gt;</code> - Port to serve on (default:
+          <code>8080</code>)
+        </li>
+        <li>
+          <code>-h, --host &lt;HOST&gt;</code> - Host address (default:
+          <code>127.0.0.1</code>)
+        </li>
+        <li>
+          <code>-d, --dir &lt;DIR&gt;</code> - Directory to serve (default:
+          current directory)
+        </li>
+        <li>
+          <code>--spa</code> - Enable SPA mode (redirects non-file paths to
+          <code>index.html</code>)
+        </li>
+        <li>
+          <code>-w, --watch</code> - Enable file watching and WebSocket reload
+        </li>
+      </ul>
+
+      <h3>Examples</h3>
+      <p>Serve current directory on port 8080:</p>
+      <pre><code>./myserve</code></pre>
+
+      <p>Serve a specific folder on a custom port:</p>
+      <pre><code>./myserve -p 3000 -d ./public</code></pre>
+
+      <p>Serve as a SPA (useful for React/Vue/Angular apps):</p>
+      <pre><code>./myserve --spa</code></pre>
+
+      <p>Enable live reload while watching directory for changes:</p>
+      <pre><code>./myserve -w</code></pre>
+
+      <h4>📁 Directory Listing</h4>
+      <p>
+        If SPA mode is disabled and the requested path is a folder, a simple
+        HTML listing is returned.
+      </p>
+
+      <h4>🔁 Live Reload</h4>
+      <p>
+        When using <code>--watch</code>, file changes in the served directory
+        will automatically broadcast a <code>reload</code> message to connected
+        clients over <code>ws://localhost:PORT/reload</code>. You can write a
+        small script to listen and reload the page.
+      </p>
+
+      <h3>Sample Live Reload Snippet (Browser-side)</h3>
+      <pre><code>&lt;script&gt;
+  const ws = new WebSocket("ws://localhost:8080/reload");
+  ws.onmessage = (msg) =&gt; {
+    if (msg.data === "reload") {
+      location.reload();
+    }
+  };
+&lt;/script&gt;
+</code></pre>
+
+      <h4>🧪 Tech Stack</h4>
+      <ul>
+        <li><code>tokio</code> – Async runtime</li>
+        <li><code>warp</code> – Web framework</li>
+        <li><code>notify</code> – File system watcher</li>
+        <li><code>mime_guess</code> – Guess MIME type from file path</li>
+        <li><code>structopt</code> – CLI argument parsing</li>
+      </ul>
+
+      <h4>🛠 Directory Structure</h4>
+      <pre><code>project-root/
+├── index.html          # This file (documentation)
+├── main.rs             # Entry point
+├── Cargo.toml          # Dependencies and config
+├── /public             # Sample static assets (optional)
+└── ...</code></pre>
+
+      <h4>📜 License</h4>
+      <p>
+        This project is open-source and freely available for personal or
+        commercial use under the MIT license.
+      </p>
+
+      <hr />
+      <p class="text-muted">Made with ❤️ using Rust + Warp</p>
+    </div>
+  </body>
+</html>
