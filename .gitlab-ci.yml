@@ -1,13 +1,36 @@
-# The Docker image that will be used to build your app
-image: node:lts
-create-pages:
-  pages:
-    # The folder that contains the files to be exposed at the Page URL
-    publish: docs
-  rules:
-    # This ensures that only pushes to the default branch will trigger
-    # a pages deploy
-    - if: $CI_COMMIT_REF_NAME == $CI_DEFAULT_BRANCH
-  # Functions that should be executed before the build script is run
-  before_script:
-    - npm ci
+stages:
+  - build
+  - test
+  - deploy
+
+# Build job
+build:
+  stage: build
+  image: rust:latest
+  script:
+    - rustup update stable
+    - rustup component add rustfmt clippy
+    - cargo build --release
+
+# Test job
+test:
+  stage: test
+  image: rust:latest
+  script:
+    - rustup update stable
+    - rustup component add rustfmt clippy
+    - cargo test
+
+# Deploy job for GitLab Pages
+deploy:
+  stage: deploy
+  image: alpine:latest
+  script:
+    - echo "🚀 Deploying /docs to public directory..."
+    - mkdir -p public
+    - cp -r docs/* public/
+  artifacts:
+    paths:
+      - public
+  only:
+    - main # Deploy only when pushing to the main branch
