@@ -1,0 +1,23 @@
+stages:
+  - build
+  - test
+
+# Define the build job
+build:
+  stage: build
+  image: rust:latest # Use the official Rust image
+  script:
+    - rustup update stable # Ensure the stable toolchain is installed
+    - rustup component add rustfmt clippy # Add rustfmt and clippy components
+    - cargo build --release # Build the project in release mode
+
+# Define the test job
+test:
+  stage: test
+  image: rust:latest # Use the official Rust image
+  script:
+    - rustup update stable # Ensure the stable toolchain is installed
+    - rustup component add rustfmt clippy # Add rustfmt and clippy components
+    - cargo test # Run tests
+
+# Optional: you can define other jobs like deploy if needed
