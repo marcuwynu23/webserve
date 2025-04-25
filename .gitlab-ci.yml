@@ -1,23 +1,13 @@
-stages:
-  - build
-  - test
-
-# Define the build job
-build:
-  stage: build
-  image: rust:latest # Use the official Rust image
-  script:
-    - rustup update stable # Ensure the stable toolchain is installed
-    - rustup component add rustfmt clippy # Add rustfmt and clippy components
-    - cargo build --release # Build the project in release mode
-
-# Define the test job
-test:
-  stage: test
-  image: rust:latest # Use the official Rust image
-  script:
-    - rustup update stable # Ensure the stable toolchain is installed
-    - rustup component add rustfmt clippy # Add rustfmt and clippy components
-    - cargo test # Run tests
-
-# Optional: you can define other jobs like deploy if needed
+# The Docker image that will be used to build your app
+image: node:lts
+create-pages:
+  pages:
+    # The folder that contains the files to be exposed at the Page URL
+    publish: docs
+  rules:
+    # This ensures that only pushes to the default branch will trigger
+    # a pages deploy
+    - if: $CI_COMMIT_REF_NAME == $CI_DEFAULT_BRANCH
+  # Functions that should be executed before the build script is run
+  before_script:
+    - npm ci
