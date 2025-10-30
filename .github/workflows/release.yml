@@ -1,45 +1,47 @@
 name: Build and Release
 
 on:
-    push:
-        tags:
-            - "v*" # Trigger on version tags (e.g., v1.0.0)
+  push:
+    tags:
+      - "v*" # Trigger on version tags (e.g., v1.0.0)
+permissions:
+  contents: write
 
 jobs:
-    build:
-        name: Build Release Binary
-        runs-on: windows-latest
-        steps:
-            - name: Checkout code
-              uses: actions/checkout@v4
+  build:
+    name: Build Release Binary
+    runs-on: windows-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
 
-            - name: Set up Rust
-              uses: dtolnay/rust-toolchain@stable
+      - name: Set up Rust
+        uses: dtolnay/rust-toolchain@stable
 
-            - name: Build project
-              run: cargo build --release
+      - name: Build project
+        run: cargo build --release
 
-            - name: Upload build artifact
-              uses: actions/upload-artifact@v4
-              with:
-                  name: myapp-windows
-                  path: target/release/*.exe
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: webserve-windows
+          path: target/release/*.exe
 
-    release:
-        name: Create GitHub Release
-        needs: build
-        runs-on: ubuntu-latest
-        steps:
-            - name: Download built artifact
-              uses: actions/download-artifact@v4
-              with:
-                  name: myapp-windows
-                  path: ./release
+  release:
+    name: Create GitHub Release
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download built artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: webserve-windows
+          path: ./release
 
-            - name: Create GitHub Release
-              uses: softprops/action-gh-release@v2
-              with:
-                  generate_release_notes: true
-                  files: ./release/*.exe
-              env:
-                  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          generate_release_notes: true
+          files: ./release/*.exe
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
