@@ -1,6 +1,6 @@
 [package]
 name = "webserve"
-version = "0.1.0"
+version = "1.0.0"
 edition = "2024"
 authors = ["Mark Wayne Menorca <marcuwynu23@gmail.com>"]
 description = "A lightweight web server"
