@@ -1,0 +1,42 @@
+name: Publish Crate
+
+on:
+    push:
+        tags:
+            - "v*" # Trigger only when you push a tag like v1.0.0
+
+jobs:
+    publish:
+        runs-on: ubuntu-latest
+
+        steps:
+            - name: Checkout repository
+              uses: actions/checkout@v4
+
+            - name: Set up Rust
+              uses: actions/setup-rust@v1
+              with:
+                  rust-version: stable
+
+            - name: Cache cargo registry and build
+              uses: actions/cache@v3
+              with:
+                  path: |
+                      ~/.cargo/registry
+                      ~/.cargo/git
+                  key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+
+            - name: Verify tag version matches Cargo.toml
+              run: |
+                  TAG_VERSION="${GITHUB_REF#refs/tags/v}"
+                  CARGO_VERSION=$(grep '^version' Cargo.toml | sed -E 's/version = "(.*)"/\1/')
+                  if [ "$TAG_VERSION" != "$CARGO_VERSION" ]; then
+                    echo "❌ Tag version ($TAG_VERSION) does not match Cargo.toml version ($CARGO_VERSION)"
+                    exit 1
+                  fi
+                  echo "✅ Tag version matches Cargo.toml version: $TAG_VERSION"
+
+            - name: Publish to crates.io
+              env:
+                  CARGO_REGISTRY_TOKEN: ${{ secrets.CRATES_IO_TOKEN }}
+              run: cargo publish --verbose
