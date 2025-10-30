@@ -12,6 +12,10 @@ use std::time::Duration;
 use structopt::StructOpt;
 use tokio::fs::{self, File};
 use tokio::io::AsyncReadExt;
+use tokio::net::TcpListener;
+
+use tokio_stream::wrappers::TcpListenerStream;
+
 use warp::http::{Response, StatusCode, header::CONTENT_TYPE};
 use warp::{Filter, ws::Message};
 
@@ -213,5 +217,14 @@ async fn main() {
         println!("🔄 Live reload via ws://{}/reload", addr);
     }
 
-    warp::serve(routes).run(addr).await;
+    let listener = match TcpListener::bind(addr).await {
+        Ok(l) => l,
+        Err(e) => {
+            eprintln!("⚠️  Could not bind to {addr}: {e}");
+            std::process::exit(1);
+        }
+    };
+
+    let incoming = TcpListenerStream::new(listener);
+    warp::serve(routes).run_incoming(incoming).await;
 }
