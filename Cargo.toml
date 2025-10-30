@@ -1,6 +1,6 @@
 [package]
 name = "webserve"
-version = "1.0.0"
+version = "1.0.2"
 edition = "2024"
 authors = ["Mark Wayne Menorca <marcuwynu23@gmail.com>"]
 description = "A lightweight web server"
@@ -15,7 +15,7 @@ structopt = "0.3"
 notify = "6"
 futures-util = "0.3"
 mime_guess = "2.0.5"
-futures = "0.3"  # Add this line
+futures = "0.3"
 
 
 [[bin]]
