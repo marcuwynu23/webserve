@@ -1,6 +1,6 @@
 [package]
 name = "webserve"
-version = "1.0.2"
+version = "1.0.3"
 edition = "2024"
 authors = ["Mark Wayne Menorca <marcuwynu23@gmail.com>"]
 description = "A lightweight web server"
@@ -16,7 +16,6 @@ notify = "6"
 futures-util = "0.3"
 mime_guess = "2.0.5"
 futures = "0.3"
-
-
+tokio-stream = { version = "0.1", features = ["net"] }
 [[bin]]
 name = "webserve"
