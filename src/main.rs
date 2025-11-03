@@ -87,7 +87,6 @@ async fn main() {
             let (_watch_tx, _watch_rx) = channel::<notify::Result<notify::Event>>();
             let mut watcher: RecommendedWatcher = notify::recommended_watcher(move |res| {
                 if let Ok(_event) = res {
-                    println!("File change detected");
                     let _ = tx.send(()); // Trigger reload when file changes
                 }
             })
