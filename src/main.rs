@@ -86,8 +86,8 @@ async fn main() {
         thread::spawn(move || {
             let (_watch_tx, _watch_rx) = channel::<notify::Result<notify::Event>>();
             let mut watcher: RecommendedWatcher = notify::recommended_watcher(move |res| {
-                if let Ok(event) = res {
-                    println!("🔁 File change detected: {:?}", event);
+                if let Ok(_event) = res {
+                    println!("File change detected");
                     let _ = tx.send(()); // Trigger reload when file changes
                 }
             })
@@ -181,11 +181,11 @@ async fn main() {
             const ws = new WebSocket("ws://{}/reload");
             ws.onmessage = (ev) => {{
                 if (ev.data === "reload") {{
-                    console.log("🔄 Live reload triggered");
+                    console.log("Live reload triggered");
                     location.reload();
                 }}
             }};
-            ws.onclose = () => console.warn("⚠️ Live reload connection closed");
+            ws.onclose = () => console.warn("Live reload connection closed");
         </script>"#,
                             addr
                         );
@@ -207,20 +207,20 @@ async fn main() {
 
     let routes = reload_ws.or(static_files);
 
-    println!("\n🚀 Serving on http://{addr}");
-    println!("📁 Directory: {:?}", static_dir);
+    println!("\nServing on http://{addr}");
+    println!("Directory: {:?}", static_dir);
     if spa_enabled {
-        println!("🔁 SPA mode: Enabled");
+        println!("SPA mode: Enabled");
     }
     if watch_enabled {
-        println!("👀 Watch mode is enabled");
-        println!("🔄 Live reload via ws://{}/reload", addr);
+        println!("Watch mode is enabled");
+        println!("Live reload via ws://{}/reload", addr);
     }
 
     let listener = match TcpListener::bind(addr).await {
         Ok(l) => l,
         Err(e) => {
-            eprintln!("⚠️  Could not bind to {addr}: {e}");
+            eprintln!("Could not bind to {addr}: {e}");
             std::process::exit(1);
         }
     };
