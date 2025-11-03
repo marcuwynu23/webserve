@@ -95,7 +95,7 @@ async fn main() {
             watcher
                 .watch(&watch_path, RecursiveMode::Recursive)
                 .expect("Failed to watch directory");
-            println!("👀 Watching directory for changes: {:?}", watch_path);
+            println!("Watching directory for changes: {:?}", watch_path);
             loop {
                 std::thread::sleep(Duration::from_secs(60));
             }
