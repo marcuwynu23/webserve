@@ -9,7 +9,7 @@
   <img src="https://img.shields.io/github/license/marcuwynu23/webserve.svg" alt="License Badge"/>
 </p>
 
-A blazing-fast static file and SPA Web server written in **Rust**, powered by [`warp`](https://crates.io/crates/warp). Supports **live reload**, SPA fallback, and directory serving — like `npm serve`, but compiled and production-ready.
+A blazing-fast static file and SPA Web server written in **Rust**. Supports **live reload**, SPA fallback, and directory serving — like `npm serve`, but compiled and production-ready.
 
 ---
 
@@ -26,7 +26,7 @@ A blazing-fast static file and SPA Web server written in **Rust**, powered by [`
 ## 📦 Installation
 
 ```bash
-git clone https://github.com/your-username/webserve
+git clone https://github.com/marcuwynu23/webserve
 cd webserve
 cargo build --release
 ```
@@ -69,30 +69,7 @@ webserve -d ./dist --spa --watch
 
 ---
 
-## 💻 Injected Reload Script
 
-When `--watch` is used, `index.html` is automatically injected with:
-
-```html
-<script>
-  const socket = new WebSocket(`ws://${location.host}/reload`);
-  socket.onmessage = () => location.reload();
-</script>
-```
-
----
-
-## 📁 Project Structure
-
-```
-webserve/
-├── src/
-│   └── main.rs         # Web server logic
-├── Cargo.toml          # Dependencies
-└── README.md
-```
-
----
 
 ## 📜 License
 
