@@ -69,8 +69,6 @@ webserve -d ./dist --spa --watch
 
 ---
 
-
-
 ## 📜 License
 
 MIT © Mark Wayne Menorca
