@@ -3,45 +3,79 @@ name: Build and Release
 on:
   push:
     tags:
-      - "v*" # Trigger on version tags (e.g., v1.0.0)
+      - "v*"
+
 permissions:
   contents: write
 
 jobs:
   build:
-    name: Build Release Binary
-    runs-on: windows-latest
+    name: Build (${{ matrix.os }})
+    runs-on: ${{ matrix.runner }}
+
+    strategy:
+      matrix:
+        include:
+          - os: windows
+            runner: windows-latest
+            target: x86_64-pc-windows-msvc
+            ext: .exe
+          - os: linux
+            runner: ubuntu-latest
+            target: x86_64-unknown-linux-gnu
+            ext: ""
+          - os: macos
+            runner: macos-latest
+            target: x86_64-apple-darwin
+            ext: ""
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
       - name: Set up Rust
         uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
 
-      - name: Build project
-        run: cargo build --release
+      - name: Build release binary
+        run: cargo build --release --target ${{ matrix.target }}
 
-      - name: Upload build artifact
+      - name: Create archive
+        run: |
+          mkdir -p release
+          BIN_NAME=webserve${{ matrix.ext }}
+          SRC_PATH=target/${{ matrix.target }}/release/$BIN_NAME
+          if [ "${{ matrix.os }}" == "windows" ]; then
+            zip -j release/webserve-${{ matrix.os }}-${{ matrix.target }}.zip $SRC_PATH
+            echo "Created release/webserve-${{ matrix.os }}-${{ matrix.target }}.zip"
+          else
+            tar -czf release/webserve-${{ matrix.os }}-${{ matrix.target }}.tar.gz -C target/${{ matrix.target }}/release $BIN_NAME
+            echo "Created release/webserve-${{ matrix.os }}-${{ matrix.target }}.tar.gz"
+          fi
+
+      - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: webserve-windows
-          path: target/release/*.exe
+          name: webserve-${{ matrix.os }}-${{ matrix.target }}
+          path: release/*
 
   release:
     name: Create GitHub Release
     needs: build
     runs-on: ubuntu-latest
+
     steps:
-      - name: Download built artifact
+      - name: Download all artifacts
         uses: actions/download-artifact@v4
         with:
-          name: webserve-windows
           path: ./release
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
           generate_release_notes: true
-          files: ./release/*.exe
+          files: |
+            release/**/*
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
