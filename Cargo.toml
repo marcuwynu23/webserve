@@ -1,7 +1,7 @@
 [package]
 name = "webserve"
 version = "1.1.2"
-edition = "2024"
+edition = "2021"
 authors = ["Mark Wayne Menorca <marcuwynu23@gmail.com>"]
 description = "A lightweight web server"
 license = "MIT"
@@ -20,5 +20,12 @@ tokio-stream = { version = "0.1", features = ["net"] }
 actix-web = "4"
 actix-files = "0.6"
 actix-web-actors = "4"
+
+[lib]
+name = "webserve"
+path = "src/lib.rs"
+
+[dev-dependencies]
+tempfile = "3"
 [[bin]]
 name = "webserve"
