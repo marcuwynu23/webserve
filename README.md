@@ -102,6 +102,14 @@ cargo build
 cargo test
 ```
 
+**Git hooks (tag + version check):** use the repo’s hooks directory (native `core.hooksPath`):
+
+```bash
+git config core.hooksPath .githooks
+```
+
+Pushing a tag like `v1.2.3` then requires `Cargo.toml` / `Cargo.lock` / tag versions to match (see [`.githooks/README.md`](.githooks/README.md)).
+
 ---
 
 ## License
