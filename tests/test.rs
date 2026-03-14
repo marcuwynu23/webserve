@@ -43,6 +43,7 @@ async fn test_serve_file_existing_file() {
         spa: false,
         addr: "127.0.0.1:8080".to_string(),
         tx,
+        redirect_dir_slash: true,
     });
 
     let app = ActixApp::new()
@@ -66,6 +67,7 @@ async fn test_serve_file_not_found() {
         spa: false,
         addr: "127.0.0.1:8080".to_string(),
         tx,
+        redirect_dir_slash: true,
     });
 
     let app = ActixApp::new()
@@ -96,6 +98,7 @@ async fn test_serve_file_spa_fallback() {
         spa: true,
         addr: "127.0.0.1:8080".to_string(),
         tx,
+        redirect_dir_slash: true,
     });
 
     let app = ActixApp::new()
@@ -124,6 +127,7 @@ async fn test_serve_file_directory_listing() {
         spa: false,
         addr: "127.0.0.1:8080".to_string(),
         tx,
+        redirect_dir_slash: true,
     });
 
     let app = ActixApp::new()
@@ -151,6 +155,7 @@ async fn test_reload_poll() {
         spa: false,
         addr: "127.0.0.1:8080".to_string(),
         tx: tx.clone(),
+        redirect_dir_slash: true,
     });
 
     let app = ActixApp::new()

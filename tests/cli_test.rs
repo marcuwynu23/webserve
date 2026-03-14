@@ -12,6 +12,8 @@ fn test_cli_options_defaults() {
     assert_eq!(options.host, "127.0.0.1");
     assert!(!options.spa);
     assert!(!options.watch);
+    assert!(!options.open);
+    assert!(!options.no_redirect_dir_slash);
 }
 
 #[test]
@@ -49,4 +51,12 @@ fn test_cli_options_directory() {
     let args = vec!["webserve", "--dir", dir_str];
     let options = ServeOptions::from_iter(args.iter());
     assert_eq!(options.directory.unwrap(), temp_dir.path());
+}
+
+#[test]
+fn test_cli_options_open_and_no_redirect_dir_slash() {
+    let args = vec!["webserve", "--open", "--no-redirect-dir-slash"];
+    let options = ServeOptions::from_iter(args.iter());
+    assert!(options.open);
+    assert!(options.no_redirect_dir_slash);
 }
