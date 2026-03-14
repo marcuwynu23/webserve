@@ -25,6 +25,8 @@
 | Static hosting | Serve any folder; optional directory listing when no `index.html` is present |
 | SPA mode | `--spa` — unknown paths serve `index.html` (client-side routing) |
 | Live reload | `--watch` — filesystem watcher + injected reload script for HTML |
+| Open browser | `--open` — after bind, open default browser (uses `127.0.0.1` when host is `0.0.0.0`) |
+| URL normalization | Collapses `//` and `.` segments; directory URLs get a trailing `/` redirect (disable with `--no-redirect-dir-slash`) |
 | Binding | Configurable `--host` and `--port` (defaults: `127.0.0.1`, `8080`) |
 
 ---
@@ -72,6 +74,8 @@ Run `webserve --help` for the full option list.
 | `--host` | `-h` | Bind address | `127.0.0.1` |
 | `--spa` | — | SPA fallback to `index.html` | off |
 | `--watch` | `-w` | Watch files and reload browsers | off |
+| `--open` | — | Open default browser to server URL | off |
+| `--no-redirect-dir-slash` | — | Don’t redirect `/dir` → `/dir/` | off (redirect on) |
 
 ### Examples
 
@@ -85,6 +89,12 @@ Serve a production build with SPA and reload (typical for Vite/React/Vue `dist`)
 
 ```bash
 webserve --dir ./dist --spa --watch
+```
+
+Open the site in the browser after start:
+
+```bash
+webserve --open --port 8080
 ```
 
 Listen on all interfaces (e.g. phone on same LAN):

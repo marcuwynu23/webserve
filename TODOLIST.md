@@ -29,8 +29,8 @@ Backlog and ideas. Check items off as you go.
 
 - [ ] Optional config file (TOML) with CLI overrides
 - [ ] CORS headers flag for local API + SPA
-- [ ] Open browser on start (`--open`)
-- [ ] Trailing-slash / URL normalization options
+- [x] Open browser on start (`--open`)
+- [x] Trailing-slash redirect (`--no-redirect-dir-slash` to disable) + normalized URL paths (`//`, `.`, reject `..`)
 
 ## Features (production-ish)
 
