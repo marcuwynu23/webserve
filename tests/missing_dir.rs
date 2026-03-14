@@ -26,6 +26,51 @@ fn missing_dir_exits_nonzero_and_stderr_helpful() {
 }
 
 #[test]
+fn join_serve_path_rejects_traversal() {
+    use std::path::Path;
+    use tempfile::TempDir;
+    use webserve::join_serve_path;
+
+    let temp = TempDir::new().unwrap();
+    let base = temp.path();
+    assert!(join_serve_path(base, "..").is_none());
+    assert!(join_serve_path(base, "a/../../etc/passwd").is_none());
+    assert!(join_serve_path(base, "../outside").is_none());
+    let j = join_serve_path(base, "foo/bar").unwrap();
+    assert_eq!(j, base.join("foo").join("bar"));
+    assert_eq!(join_serve_path(base, "").unwrap(), Path::new(base));
+}
+
+#[actix_web::test]
+async fn serve_file_rejects_parent_dir() {
+    use actix_web::{test, web, App as ActixApp};
+    use std::sync::Arc;
+    use tempfile::TempDir;
+    use tokio::sync::broadcast;
+    use webserve::{serve_file, AppState};
+
+    let temp_dir = TempDir::new().unwrap();
+    let static_dir = Arc::new(temp_dir.path().to_path_buf());
+    let (tx, _) = broadcast::channel::<()>(16);
+    let app_state = web::Data::new(AppState {
+        static_dir,
+        watch: false,
+        spa: false,
+        addr: "127.0.0.1:8080".to_string(),
+        tx,
+    });
+    let app = ActixApp::new()
+        .app_data(app_state)
+        .route("/{_:.*}", web::get().to(serve_file));
+    let mut app = test::init_service(app).await;
+    let req = test::TestRequest::get()
+        .uri("/../Cargo.toml")
+        .to_request();
+    let resp = test::call_service(&mut app, req).await;
+    assert_eq!(resp.status(), actix_web::http::StatusCode::NOT_FOUND);
+}
+
+#[test]
 fn validate_static_root_unit() {
     use std::fs;
     use tempfile::TempDir;
