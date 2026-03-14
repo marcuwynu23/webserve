@@ -118,7 +118,7 @@ cargo test
 git config core.hooksPath .githooks
 ```
 
-Pushing a tag `v*` checks tag ↔ `Cargo.toml` ↔ `Cargo.lock` only (fast). Optional: `WEBSERVE_HOOK_RUN_CARGO=1` to run `cargo check` first — see [`.githooks/README.md`](.githooks/README.md).
+Hooks are **off by default** so `git push` isn’t delayed. Optional tag check: `WEBSERVE_HOOK_VERSION_CHECK=1 git push origin v1.2.1` — see [`.githooks/README.md`](.githooks/README.md).
 
 ---
 

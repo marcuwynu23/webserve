@@ -4,21 +4,34 @@
 git config core.hooksPath .githooks
 ```
 
-## pre-push
+## Why the hook is **off** by default
 
-| Push | Behavior |
-|------|----------|
-| **No `v*` tag** | Exits immediately (no delay). |
-| **Tag `v*`** | Compares tag ↔ `Cargo.toml` ↔ `Cargo.lock` (sed/awk only — **seconds, not minutes**). |
+`git push` was sitting there a long time before the upload started. That’s usually **SSH connecting to GitHub**, **Credential Manager**, or **waiting on a hook** — not Rust compile (your `cargo check` is ~2s).
 
-**`cargo check` does not run by default** (that was slowing pushes). To compile before push:
+This **pre-push does nothing unless you opt in**, so normal **`git push`** returns as fast as your network allows.
+
+## Optional: version check before a tag push
 
 ```bash
-WEBSERVE_HOOK_RUN_CARGO=1 git push origin v1.2.3
+WEBSERVE_HOOK_VERSION_CHECK=1 git push origin v1.2.1
 ```
 
-Skip the hook: `git push --no-verify`
+Checks tag ↔ `Cargo.toml` ↔ `Cargo.lock`. Optional compile:
 
-## Windows
+```bash
+WEBSERVE_HOOK_VERSION_CHECK=1 WEBSERVE_HOOK_RUN_CARGO=1 git push origin v1.2.1
+```
 
-Uses `sh` (Git Bash). Unix: `chmod +x .githooks/pre-push` if needed.
+## CI still protects you
+
+The **publish** workflow already fails if the tag doesn’t match `Cargo.toml`, so crates.io won’t get a bad release.
+
+## Skip any hook
+
+```bash
+git push --no-verify
+```
+
+## If push is still slow
+
+Try **`git push --no-verify`**. If it’s **still** slow, the delay is **not** this repo’s hook — check VPN, SSH key, or Git Credential Manager.
