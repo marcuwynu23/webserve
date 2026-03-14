@@ -1,17 +1,14 @@
 #!/bin/sh
-# pre-push — when pushing a version tag (refs/tags/v*), require:
-#   tag name (without v) == Cargo.toml [package].version == Cargo.lock [[package]] webserve version
-# Optional: cargo check unless WEBSERVE_HOOK_SKIP_CARGO=1
+# pre-push — tag v* must match Cargo.toml + Cargo.lock (fast: no compile by default).
+# Optional slow check: WEBSERVE_HOOK_RUN_CARGO=1 git push origin v1.2.3
 #
-# Enable once per clone:  git config core.hooksPath .githooks
+# Enable: git config core.hooksPath .githooks
 
 set -e
-
 REPO_ROOT=$(git rev-parse --show-toplevel)
 cd "$REPO_ROOT" || exit 1
 
 cargo_toml_version() {
-  # first top-level version = in [package] block is usually line 3; keep simple: first ^version =
   sed -n 's/^version = "\([^"]*\)"/\1/p' Cargo.toml | head -n1
 }
 
@@ -46,16 +43,16 @@ while read -r local_ref local_sha remote_ref remote_sha || true; do
         continue
       fi
       if [ -z "$lock_ver" ]; then
-        echo "pre-push: could not find package webserve version in Cargo.lock" >&2
+        echo "pre-push: could not find webserve in Cargo.lock" >&2
         FAILED=1
         continue
       fi
       if [ "$tag_ver" != "$toml_ver" ]; then
-        echo "pre-push: tag v${tag_ver} does not match Cargo.toml version \"${toml_ver}\"" >&2
+        echo "pre-push: tag v${tag_ver} != Cargo.toml \"${toml_ver}\"" >&2
         FAILED=1
       fi
       if [ "$toml_ver" != "$lock_ver" ]; then
-        echo "pre-push: Cargo.toml \"${toml_ver}\" != Cargo.lock webserve \"${lock_ver}\"" >&2
+        echo "pre-push: Cargo.toml \"${toml_ver}\" != lock \"${lock_ver}\"" >&2
         echo "pre-push: run: cargo build && git add Cargo.lock && git commit" >&2
         FAILED=1
       fi
@@ -63,22 +60,18 @@ while read -r local_ref local_sha remote_ref remote_sha || true; do
   esac
 done
 
-# No version tag in this push — nothing to enforce
 [ "$TAG_PUSH" = 0 ] && exit 0
 
 if [ "$FAILED" != 0 ]; then
-  echo "pre-push: aborting tag push (fix versions or use --no-verify to skip)" >&2
+  echo "pre-push: aborting (or: git push --no-verify)" >&2
   exit 1
 fi
 
-if [ "${WEBSERVE_HOOK_SKIP_CARGO:-0}" = 1 ]; then
-  echo "pre-push: versions OK (cargo check skipped)"
-  exit 0
+echo "pre-push: tag / Cargo.toml / Cargo.lock OK"
+
+if [ "${WEBSERVE_HOOK_RUN_CARGO:-0}" = 1 ]; then
+  echo "pre-push: running cargo check..."
+  cargo check -q || { echo "pre-push: cargo check failed" >&2; exit 1; }
 fi
 
-echo "pre-push: versions OK — running cargo check (WEBSERVE_HOOK_SKIP_CARGO=1 to skip)..."
-cargo check -q || {
-  echo "pre-push: cargo check failed" >&2
-  exit 1
-}
 exit 0

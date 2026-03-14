@@ -118,7 +118,7 @@ cargo test
 git config core.hooksPath .githooks
 ```
 
-Pushing a tag like `v1.2.3` then requires `Cargo.toml` / `Cargo.lock` / tag versions to match (see [`.githooks/README.md`](.githooks/README.md)).
+Pushing a tag `v*` checks tag ↔ `Cargo.toml` ↔ `Cargo.lock` only (fast). Optional: `WEBSERVE_HOOK_RUN_CARGO=1` to run `cargo check` first — see [`.githooks/README.md`](.githooks/README.md).
 
 ---
 
