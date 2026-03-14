@@ -1,39 +1,53 @@
 <div align="center">
-  <h1> webserve </h1>
+
+# webserve
+
+**Static file server for local development** — SPA fallback, optional live reload, configurable host and port.
+
+[Rust](https://www.rust-lang.org/) · [Actix Web](https://actix.rs/) · [Tokio](https://tokio.rs/)
+
+[![GitHub stars](https://img.shields.io/github/stars/marcuwynu23/webserve?style=flat&logo=github)](https://github.com/marcuwynu23/webserve/stargazers)
+[![GitHub forks](https://img.shields.io/github/forks/marcuwynu23/webserve?style=flat&logo=github)](https://github.com/marcuwynu23/webserve/network/members)
+[![GitHub issues](https://img.shields.io/github/issues/marcuwynu23/webserve?style=flat&logo=github)](https://github.com/marcuwynu23/webserve/issues)
+[![License](https://img.shields.io/github/license/marcuwynu23/webserve?style=flat)](LICENSE)
+[![Crates.io](https://img.shields.io/crates/v/webserve.svg)](https://crates.io/crates/webserve)
+
+[**Repository**](https://github.com/marcuwynu23/webserve) · [**Issues**](https://github.com/marcuwynu23/webserve/issues) · [**Pull requests**](https://github.com/marcuwynu23/webserve/pulls)
+
 </div>
 
-<p align="center">
-  <img src="https://img.shields.io/github/stars/marcuwynu23/webserve.svg" alt="Stars Badge"/>
-  <img src="https://img.shields.io/github/forks/marcuwynu23/webserve.svg" alt="Forks Badge"/>
-  <img src="https://img.shields.io/github/issues/marcuwynu23/webserve.svg" alt="Issues Badge"/>
-  <img src="https://img.shields.io/github/license/marcuwynu23/webserve.svg" alt="License Badge"/>
-</p>
+---
 
-A blazing-fast static file and SPA Web server written in **Rust**. Supports **live reload**, SPA fallback, and directory serving — like `npm serve`, but compiled and production-ready.
+## Features
+
+| Capability | Description |
+|------------|-------------|
+| Static hosting | Serve any folder; optional directory listing when no `index.html` is present |
+| SPA mode | `--spa` — unknown paths serve `index.html` (client-side routing) |
+| Live reload | `--watch` — filesystem watcher + injected reload script for HTML |
+| Binding | Configurable `--host` and `--port` (defaults: `127.0.0.1`, `8080`) |
 
 ---
 
-## 🚀 Features
+## Requirements
 
-- ✅ Serve any directory (`-d ./dist`)
-- ✅ SPA fallback support (`--spa`)
-- ✅ File watching with automatic browser reload (`--watch`)
-- ✅ Configurable host and port (`-h`, `-p`)
-- ✅ Built with Rust + Tokio for high performance
+- **Rust** (stable), e.g. via [rustup](https://rustup.rs/)
 
 ---
 
-## 📦 Installation
+## Installation
+
+**From a clone**
 
 ```bash
-git clone https://github.com/marcuwynu23/webserve
+git clone https://github.com/marcuwynu23/webserve.git
 cd webserve
 cargo build --release
 ```
 
-The executable will be located in `target/release/webserve`.
+Binary: `target/release/webserve` (or `webserve.exe` on Windows).
 
-You can also install it globally (requires Rust):
+**Install into Cargo bin path**
 
 ```bash
 cargo install --path .
@@ -41,34 +55,55 @@ cargo install --path .
 
 ---
 
-## 🛠 Usage
+## Usage
 
 ```bash
 webserve [OPTIONS]
 ```
 
+Run `webserve --help` for the full option list.
+
 ### Options
 
-| Flag            | Description                            | Default           |
-| --------------- | -------------------------------------- | ----------------- |
-| `-d`, `--dir`   | Directory to serve files from          | Current directory |
-| `-p`, `--port`  | Port to listen on                      | `8080`            |
-| `-h`, `--host`  | Host/IP to bind                        | `127.0.0.1`       |
-| `--spa`         | Enable SPA fallback (404 → index.html) | disabled          |
-| `-w`, `--watch` | Enable file watching + auto-reload     | disabled          |
+| Option | Short | Description | Default |
+|--------|-------|-------------|---------|
+| `--dir` | `-d` | Root directory to serve | Current working directory |
+| `--port` | `-p` | TCP port | `8080` |
+| `--host` | `-h` | Bind address | `127.0.0.1` |
+| `--spa` | — | SPA fallback to `index.html` | off |
+| `--watch` | `-w` | Watch files and reload browsers | off |
 
----
+### Examples
 
-## 🧪 Example
-
-Serve a Vite/React app from `./dist`, with SPA fallback and live reload:
+Serve the current directory:
 
 ```bash
-webserve -d ./dist --spa --watch
+webserve
+```
+
+Serve a production build with SPA and reload (typical for Vite/React/Vue `dist`):
+
+```bash
+webserve --dir ./dist --spa --watch
+```
+
+Listen on all interfaces (e.g. phone on same LAN):
+
+```bash
+webserve --host 0.0.0.0 --port 3000 --dir ./public
 ```
 
 ---
 
-## 📜 License
+## Development
 
-MIT © Mark Wayne Menorca
+```bash
+cargo build
+cargo test
+```
+
+---
+
+## License
+
+MIT © [Mark Wayne Menorca](mailto:marcuwynu23@gmail.com)
