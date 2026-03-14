@@ -2,195 +2,365 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <title>📄 myserve - Static & SPA File Server</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta
+      name="description"
+      content="webserve — static file server for local development. Rust, SPA mode, live reload."
+    />
+    <meta name="theme-color" content="#5b21b6" />
+    <title>webserve</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
+      href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,400;0,500;0,600;0,700;1,400&family=JetBrains+Mono:wght@400;500&display=swap"
       rel="stylesheet"
-      href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.0/css/bootstrap.min.css"
     />
     <style>
+      /* Monochromatic purple */
+      :root {
+        --bg: #f3f0f8;
+        --surface: #faf8fc;
+        --text: #2a2438;
+        --muted: #6e6280;
+        --border: #ddd5e8;
+        --accent: #5b21b6;
+        --accent-hover: #6d28d9;
+        --accent-soft: #7c3aed;
+        --code-bg: #e9e4f2;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      html {
+        scroll-behavior: smooth;
+        height: 100%;
+      }
       body {
-        padding: 2rem;
-        font-family: "Segoe UI", sans-serif;
+        margin: 0;
+        min-height: 100vh;
+        display: flex;
+        flex-direction: column;
+        font-family: "Plus Jakarta Sans", system-ui, sans-serif;
+        font-size: 1rem;
         line-height: 1.6;
+        color: var(--text);
+        background: var(--bg);
+        -webkit-font-smoothing: antialiased;
+      }
+      /* Grows so footer sits at viewport bottom when content is short; scrolls normally when long */
+      .page-fill {
+        flex: 1 0 auto;
+        width: 100%;
+      }
+      .hero {
+        width: 100%;
+        margin: 0;
+        background: linear-gradient(160deg, #4c1d95 0%, #5b21b6 45%, #6d28d9 100%);
+        color: #f5f3ff;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+      }
+      .hero .container-fluid {
+        padding-top: clamp(2.75rem, 6vw, 3.75rem);
+        padding-bottom: clamp(2.75rem, 5vw, 3.5rem);
+      }
+      .hero .logo {
+        font-size: clamp(2rem, 4.25vw, 2.65rem);
+        font-weight: 700;
+        letter-spacing: -0.035em;
+        line-height: 1.12;
+        margin: 0 0 0.85rem;
+        color: #fff;
+      }
+      .hero .tagline {
+        margin: 0;
+        font-size: clamp(1.08rem, 2.2vw, 1.28rem);
+        line-height: 1.5;
+        color: rgba(255, 255, 255, 0.9);
+        font-weight: 500;
+        max-width: 32em;
+      }
+      .hero .links {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.55rem 0.65rem;
+        margin-top: clamp(1.35rem, 3vw, 1.75rem);
+      }
+      .hero .links a {
+        display: inline-flex;
+        align-items: center;
+        color: #fff;
+        text-decoration: none;
+        font-weight: 600;
+        font-size: clamp(0.875rem, 1.5vw, 0.975rem);
+        padding: 0.45rem 1rem;
+        background: rgba(255, 255, 255, 0.2);
+        border: 1px solid rgba(255, 255, 255, 0.28);
+        border-radius: 999px;
+        transition: background 0.15s, border-color 0.15s, transform 0.12s;
+      }
+      .hero .links a:hover {
+        background: rgba(255, 255, 255, 0.32);
+        border-color: rgba(255, 255, 255, 0.45);
+        transform: translateY(-1px);
+      }
+      /* Bootstrap-style container-fluid: full width + horizontal gutter */
+      .container-fluid {
+        width: 100%;
+        max-width: 100%;
+        margin: 0 auto;
+        padding-left: clamp(1.25rem, 4vw, 3rem);
+        padding-right: clamp(1.25rem, 4vw, 3rem);
+        box-sizing: border-box;
+      }
+      .container-fluid.page-main {
+        padding-top: 3rem;
+        padding-bottom: 3rem;
+      }
+      section {
+        margin-bottom: 2.75rem;
+      }
+      section h2 {
+        font-size: 0.6875rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.12em;
+        color: var(--muted);
+        margin: 0 0 1rem;
+      }
+      ul.feat {
+        margin: 0;
+        padding: 0;
+        list-style: none;
+      }
+      ul.feat li {
+        position: relative;
+        padding-left: 1.1rem;
+        margin-bottom: 0.5rem;
+        color: var(--text);
+      }
+      ul.feat li::before {
+        content: "";
+        position: absolute;
+        left: 0;
+        top: 0.65em;
+        width: 4px;
+        height: 4px;
+        background: var(--accent-soft);
+        border-radius: 50%;
+        opacity: 0.55;
+      }
+      pre {
+        margin: 0;
+        padding: 1rem 1.125rem;
+        background: var(--surface);
+        border: 1px solid var(--border);
+        color: var(--text);
+        border-radius: 6px;
+        overflow-x: auto;
+        font-family: "JetBrains Mono", ui-monospace, monospace;
+        font-size: 0.8125rem;
+        line-height: 1.55;
       }
       code {
-        background: #f5f5f5;
-        padding: 0.2rem 0.4rem;
-        border-radius: 3px;
-        font-family: monospace;
+        font-family: "JetBrains Mono", ui-monospace, monospace;
+        font-size: 0.9em;
+        background: var(--code-bg);
+        padding: 0.12em 0.35em;
+        border-radius: 4px;
       }
       pre code {
-        display: block;
-        padding: 1rem;
+        background: none;
+        padding: 0;
       }
-      h1,
-      h4,
-      h3,
-      h4 {
-        margin-top: 2rem;
+      .table {
+        width: 100%;
+        font-size: 0.875rem;
+        border-collapse: collapse;
       }
-      ul {
-        margin-top: 0.5rem;
+      .table th,
+      .table td {
+        text-align: left;
+        padding: 0.5rem 0.75rem 0.5rem 0;
+        border-bottom: 1px solid var(--border);
+        vertical-align: top;
+      }
+      .table th {
+        color: var(--muted);
+        font-weight: 500;
+        width: 7rem;
+      }
+      footer.site-footer {
+        width: 100%;
+        flex-shrink: 0;
+        margin-top: auto;
+        background: linear-gradient(180deg, #ede8f4 0%, #e4dcf0 100%);
+        border-top: 1px solid var(--border);
+        text-align: center;
+      }
+      .site-footer .container-fluid {
+        padding-top: 2.75rem;
+        padding-bottom: 2.5rem;
+      }
+      .site-footer-brand {
+        font-size: 1.125rem;
+        font-weight: 700;
+        letter-spacing: -0.02em;
+        color: var(--accent);
+        text-decoration: none;
+        display: inline-block;
+        margin-bottom: 0.35rem;
+      }
+      .site-footer-brand:hover {
+        color: var(--accent-hover);
+      }
+      .site-footer-tag {
+        font-size: 0.8125rem;
+        color: var(--muted);
+        margin: 0 0 1.25rem;
+        max-width: 28rem;
+        margin-left: auto;
+        margin-right: auto;
+        line-height: 1.5;
+      }
+      .site-footer-links {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: center;
+        align-items: center;
+        gap: 0.5rem 0.25rem;
+        margin-bottom: 1.5rem;
+      }
+      .site-footer-links a {
+        display: inline-flex;
+        align-items: center;
+        padding: 0.4rem 0.9rem;
+        font-size: 0.8125rem;
+        font-weight: 500;
+        color: var(--accent);
+        text-decoration: none;
+        background: rgba(255, 255, 255, 0.65);
+        border: 1px solid var(--border);
+        border-radius: 999px;
+        transition: background 0.15s, border-color 0.15s, color 0.15s;
+      }
+      .site-footer-links a:hover {
+        background: #fff;
+        border-color: var(--accent-soft);
+        color: var(--accent-hover);
+      }
+      .site-footer-meta {
+        font-size: 0.75rem;
+        color: var(--muted);
+        letter-spacing: 0.02em;
+      }
+      .site-footer-meta span {
+        opacity: 0.85;
+      }
+      .site-footer-dot {
+        margin: 0 0.5rem;
+        opacity: 0.4;
       }
     </style>
   </head>
   <body>
-    <div class="container">
-      <h1>myserve</h1>
-      <p>
-        <strong>myserve</strong> is a lightweight static file and SPA (Single
-        Page Application) server with optional live reload support using
-        WebSockets. Built with Rust, <code>tokio</code>, and <code>warp</code>,
-        it’s ideal for development workflows or serving local apps.
-      </p>
-      <!-- Add this whole section below the Features or Usage section -->
-      <h4>How It Works</h4>
-      <p>
-        <strong><code>myserve</code></strong> is a fast and minimalist static
-        file and SPA server built with Rust. It’s designed for developers who
-        need a simple and powerful way to preview files locally, serve frontend
-        apps, or test directory structures. When you run <code>myserve</code>,
-        it launches an HTTP server bound to the provided <code>--host</code> and
-        <code>--port</code> and serves the contents of the given directory.
-      </p>
+    <header class="hero">
+      <div class="container-fluid">
+        <h1 class="logo">webserve</h1>
+        <p class="tagline">
+          Static file server for local development. Serve a directory over HTTP
+          with optional SPA routing and live reload.
+        </p>
+        <nav class="links" aria-label="Project links">
+          <a href="https://github.com/marcuwynu23/webserve">GitHub</a>
+          <a href="https://crates.io/crates/webserve">crates.io</a>
+          <a href="https://github.com/marcuwynu23/webserve/issues">Issues</a>
+        </nav>
+      </div>
+    </header>
 
-      <p>
-        If a directory is accessed, and you haven’t enabled SPA mode, the server
-        dynamically generates a clean HTML directory listing so you can browse
-        files directly in your browser — no frills, no BS, just fast results. On
-        the other hand, if SPA mode is enabled (<code>--spa</code>),
-        <code>myserve</code> ensures that all unknown paths fallback to
-        <code>index.html</code>, which is essential for client-side routing in
-        frameworks like React, Vue, or Angular.
-      </p>
+    <div class="page-fill">
+    <div class="container-fluid page-main">
+      <section aria-labelledby="h-install">
+        <h2 id="h-install">Install</h2>
+        <pre><code>cargo install webserve</code></pre>
+        <p style="margin-top: 1rem; font-size: 0.875rem; color: var(--muted)">
+          Or build from source:
+          <code>cargo install --path .</code>
+        </p>
+      </section>
 
-      <p>
-        Now here’s the part: with <code>--watch</code> enabled,
-        <strong>live reload</strong> kicks in. <code>myserve</code> watches your
-        project folder and sends a WebSocket message whenever something changes
-        (HTML, CSS, JS, anything). Add a tiny script to your frontend, and your
-        browser auto-refreshes every time you save. It’s not just
-        convenient—it’s addictive.
-      </p>
+      <section aria-labelledby="h-use">
+        <h2 id="h-use">Use</h2>
+        <pre><code>webserve
+webserve --dir ./dist --spa --watch
+webserve --open --port 8080</code></pre>
+      </section>
 
-      <p>
-        No over-complicated configs. No dependency hell. Just run it, code, and
-        reload in peace.
-      </p>
+      <section aria-labelledby="h-flags">
+        <h2 id="h-flags">CLI</h2>
+        <table class="table">
+          <tbody>
+            <tr>
+              <th><code>-d</code> <code>--dir</code></th>
+              <td>Directory to serve (default: current)</td>
+            </tr>
+            <tr>
+              <th><code>-p</code> <code>--port</code></th>
+              <td>Port (default: 8080)</td>
+            </tr>
+            <tr>
+              <th><code>-h</code> <code>--host</code></th>
+              <td>Bind address (default: 127.0.0.1)</td>
+            </tr>
+            <tr>
+              <th><code>--spa</code></th>
+              <td>Fallback to <code>index.html</code> for client routes</td>
+            </tr>
+            <tr>
+              <th><code>-w</code> <code>--watch</code></th>
+              <td>Reload browser when files change</td>
+            </tr>
+            <tr>
+              <th><code>--open</code></th>
+              <td>Open default browser after start</td>
+            </tr>
+          </tbody>
+        </table>
+      </section>
 
-      <p>
-        <strong
-          >Use it once and you'll wonder why you didn’t build this
-          yourself.</strong
-        >
-        But now you don’t have to.
-      </p>
+      <section aria-labelledby="h-stack">
+        <h2 id="h-stack">Stack</h2>
+        <ul class="feat">
+          <li>Rust · Actix Web · Tokio</li>
+          <li>Directory listing when no index is present</li>
+          <li>MIT licensed</li>
+        </ul>
+      </section>
 
-      <h4>Features</h4>
-      <ul>
-        <li>Static file server with directory listing support</li>
-        <li>Single Page Application (SPA) mode support</li>
-        <li>Live reload using WebSockets on file changes</li>
-        <li>Customizable host, port, and directory</li>
-        <li>Built with async/await using <code>tokio</code> runtime</li>
-      </ul>
-
-      <h4>Installation</h4>
-      <p>Ensure you have <code>cargo</code> (Rust) installed.</p>
-      <pre><code>git clone https://github.com/yourusername/myserve.git
-cd myserve
-cargo build --release</code></pre>
-
-      <h4>Usage</h4>
-      <pre><code>./myserve [OPTIONS]</code></pre>
-
-      <h3>Options</h3>
-      <ul>
-        <li>
-          <code>-p, --port &lt;PORT&gt;</code> - Port to serve on (default:
-          <code>8080</code>)
-        </li>
-        <li>
-          <code>-h, --host &lt;HOST&gt;</code> - Host address (default:
-          <code>127.0.0.1</code>)
-        </li>
-        <li>
-          <code>-d, --dir &lt;DIR&gt;</code> - Directory to serve (default:
-          current directory)
-        </li>
-        <li>
-          <code>--spa</code> - Enable SPA mode (redirects non-file paths to
-          <code>index.html</code>)
-        </li>
-        <li>
-          <code>-w, --watch</code> - Enable file watching and WebSocket reload
-        </li>
-      </ul>
-
-      <h3>Examples</h3>
-      <p>Serve current directory on port 8080:</p>
-      <pre><code>./myserve</code></pre>
-
-      <p>Serve a specific folder on a custom port:</p>
-      <pre><code>./myserve -p 3000 -d ./public</code></pre>
-
-      <p>Serve as a SPA (useful for React/Vue/Angular apps):</p>
-      <pre><code>./myserve --spa</code></pre>
-
-      <p>Enable live reload while watching directory for changes:</p>
-      <pre><code>./myserve -w</code></pre>
-
-      <h4>Directory Listing</h4>
-      <p>
-        If SPA mode is disabled and the requested path is a folder, a simple
-        HTML listing is returned.
-      </p>
-
-      <h4>Live Reload</h4>
-      <p>
-        When using <code>--watch</code>, file changes in the served directory
-        will automatically broadcast a <code>reload</code> message to connected
-        clients over <code>ws://localhost:PORT/reload</code>. You can write a
-        small script to listen and reload the page.
-      </p>
-
-      <h3>Sample Live Reload Snippet (Browser-side)</h3>
-      <pre><code>&lt;script&gt;
-  const ws = new WebSocket("ws://localhost:8080/reload");
-  ws.onmessage = (msg) =&gt; {
-    if (msg.data === "reload") {
-      location.reload();
-    }
-  };
-&lt;/script&gt;
-</code></pre>
-
-      <h4>Tech Stack</h4>
-      <ul>
-        <li><code>tokio</code> – Async runtime</li>
-        <li><code>warp</code> – Web framework</li>
-        <li><code>notify</code> – File system watcher</li>
-        <li><code>mime_guess</code> – Guess MIME type from file path</li>
-        <li><code>structopt</code> – CLI argument parsing</li>
-      </ul>
-
-      <h4>Directory Structure</h4>
-      <pre><code>project-root/
-├── index.html          # This file (documentation)
-├── main.rs             # Entry point
-├── Cargo.toml          # Dependencies and config
-├── /public             # Sample static assets (optional)
-└── ...</code></pre>
-
-      <h4>License</h4>
-      <p>
-        This project is open-source and freely available for personal or
-        commercial use under the MIT license.
-      </p>
-
-      <hr />
-      <p class="text-muted">Made with ❤️ using Rust</p>
     </div>
+    </div>
+
+    <footer class="site-footer">
+      <div class="container-fluid">
+        <a class="site-footer-brand" href="https://github.com/marcuwynu23/webserve"
+          >webserve</a
+        >
+        <p class="site-footer-tag">
+          Static file server for local development. Rust · MIT License
+        </p>
+        <nav class="site-footer-links" aria-label="Footer">
+          <a href="https://github.com/marcuwynu23/webserve">GitHub</a>
+          <a href="https://crates.io/crates/webserve">crates.io</a>
+          <a href="https://github.com/marcuwynu23/webserve/issues">Issues</a>
+        </nav>
+        <div class="site-footer-meta">
+          <span>Mark Wayne Menorca</span>
+          <span class="site-footer-dot" aria-hidden="true">·</span>
+          <span>MIT</span>
+          <span class="site-footer-dot" aria-hidden="true">·</span>
+          <span>2026</span>
+        </div>
+      </div>
+    </footer>
   </body>
 </html>
