@@ -2,13 +2,29 @@
 
 use actix_web::{web, App, HttpServer};
 use notify::{RecommendedWatcher, RecursiveMode, Watcher};
+use std::path::Path;
 use std::sync::mpsc::channel;
 use std::sync::Arc;
 use std::thread;
 use std::time::Duration;
 use structopt::StructOpt;
 use tokio::sync::broadcast;
-use webserve::{reload_poll, serve_file, AppState, ServeOptions};
+use webserve::{
+    reload_poll, serve_file, validate_static_root, AppState, ServeOptions, StaticDirError,
+};
+
+fn log_info(msg: &str) {
+    println!("[INFO] {}", msg);
+}
+
+/// Exit when `--dir` (or the resolved root) is invalid.
+fn fail_static_dir(path: &Path, err: StaticDirError) -> ! {
+    match err {
+        StaticDirError::NotFound => eprintln!("{} not found", path.display()),
+        StaticDirError::NotADirectory => eprintln!("{} is not a directory", path.display()),
+    }
+    std::process::exit(1);
+}
 
 /// Application entry point.
 ///
@@ -24,8 +40,23 @@ async fn main() -> std::io::Result<()> {
             .unwrap_or_else(|| std::env::current_dir().unwrap()),
     );
 
+    if let Err(e) = validate_static_root(&static_dir) {
+        fail_static_dir(&static_dir, e);
+    }
+
     let addr = format!("{}:{}", options.host, options.port);
     let (tx, _rx) = broadcast::channel::<()>(16);
+
+    log_info("Starting webserve");
+    log_info(&format!("Directory: {}", static_dir.display()));
+    log_info(&format!("Host: {}", options.host));
+    log_info(&format!("Port: {}", options.port));
+    if options.spa {
+        log_info("SPA mode: enabled");
+    }
+    if options.watch {
+        log_info("Watch: enabled");
+    }
 
     let app_state = web::Data::new(AppState {
         static_dir: static_dir.clone(),
@@ -50,14 +81,14 @@ async fn main() -> std::io::Result<()> {
             watcher
                 .watch(&watch_path, RecursiveMode::Recursive)
                 .expect("Failed to watch directory");
-            println!("Watching directory: {:?}", watch_path);
+            log_info(&format!("Watching directory: {}", watch_path.display()));
             loop {
                 thread::sleep(Duration::from_secs(60));
             }
         });
     }
 
-    println!("Serving on http://{}", addr);
+    log_info(&format!("Serving on http://{}", addr));
 
     HttpServer::new(move || {
         App::new()
