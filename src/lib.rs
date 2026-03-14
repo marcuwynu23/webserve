@@ -49,6 +49,14 @@ pub struct ServeOptions {
     /// Enable live reload by watching for file changes
     #[structopt(short = "w", long = "watch")]
     pub watch: bool,
+
+    /// Open the default browser to the server URL after startup
+    #[structopt(long = "open")]
+    pub open: bool,
+
+    /// Do not redirect to add a trailing slash when the URL names a directory (default: redirect)
+    #[structopt(long = "no-redirect-dir-slash")]
+    pub no_redirect_dir_slash: bool,
 }
 
 /// Why the chosen static root cannot be used.
@@ -71,9 +79,28 @@ pub fn validate_static_root(path: &Path) -> Result<(), StaticDirError> {
     }
 }
 
-/// Joins a URL path segment onto the serve root without allowing `..` or absolute paths.
-pub fn join_serve_path(base: &Path, request_path: &str) -> Option<PathBuf> {
-    let rel = request_path.trim_start_matches('/');
+/// Collapses repeated `/` and `.` segments; rejects `..`. Root is `/`.
+pub fn normalize_url_path(path: &str) -> Option<String> {
+    let mut out: Vec<&str> = Vec::new();
+    for seg in path.split('/') {
+        if seg.is_empty() || seg == "." {
+            continue;
+        }
+        if seg == ".." {
+            return None;
+        }
+        out.push(seg);
+    }
+    if out.is_empty() {
+        Some("/".to_string())
+    } else {
+        Some(format!("/{}", out.join("/")))
+    }
+}
+
+/// Joins normalized URL path onto the serve root (no `..`).
+pub fn join_serve_path(base: &Path, normalized_path: &str) -> Option<PathBuf> {
+    let rel = normalized_path.trim_start_matches('/');
     let mut out = base.to_path_buf();
     for c in Path::new(rel).components() {
         match c {
@@ -92,6 +119,8 @@ pub struct AppState {
     pub spa: bool,
     pub addr: String,
     pub tx: broadcast::Sender<()>,
+    /// Redirect GET when URL names a directory but has no trailing `/`.
+    pub redirect_dir_slash: bool,
 }
 
 /// Generates a simple HTML directory listing for the given path.
@@ -123,10 +152,32 @@ pub async fn serve_file(
     data: web::Data<AppState>,
 ) -> actix_web::Result<impl Responder> {
     let base_dir = &data.static_dir;
-    let path = req.path();
-    let Some(mut file_path) = join_serve_path(base_dir, path) else {
+    let Some(canonical_path) = normalize_url_path(req.path()) else {
         return Ok(HttpResponse::NotFound().finish());
     };
+    let Some(mut file_path) = join_serve_path(base_dir, &canonical_path) else {
+        return Ok(HttpResponse::NotFound().finish());
+    };
+
+    // Directory without trailing slash -> redirect to .../ (normalized URLs always lack trailing slash except root)
+    if data.redirect_dir_slash
+        && file_path.is_dir()
+        && canonical_path != "/"
+        && !req.path().ends_with('/')
+    {
+        let location = if canonical_path == "/" {
+            "/".to_string()
+        } else {
+            format!("{}/", canonical_path)
+        };
+        let mut r = HttpResponse::build(actix_web::http::StatusCode::TEMPORARY_REDIRECT);
+        if let Some(q) = req.uri().query() {
+            r.insert_header((actix_web::http::header::LOCATION, format!("{}?{}", location, q)));
+        } else {
+            r.insert_header((actix_web::http::header::LOCATION, location));
+        }
+        return Ok(r.finish());
+    }
 
     // If the request points to a directory, check for an index.html file
     if file_path.is_dir() {

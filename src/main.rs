@@ -69,6 +69,12 @@ async fn run() -> Result<(), String> {
     if options.watch {
         log_info("Watch: enabled");
     }
+    if options.open {
+        log_info("Open browser: enabled");
+    }
+    if options.no_redirect_dir_slash {
+        log_info("Directory slash redirect: disabled");
+    }
 
     let app_state = web::Data::new(AppState {
         static_dir: static_dir.clone(),
@@ -76,6 +82,7 @@ async fn run() -> Result<(), String> {
         spa: options.spa,
         addr: addr.clone(),
         tx: tx.clone(),
+        redirect_dir_slash: !options.no_redirect_dir_slash,
     });
 
     if options.watch {
@@ -102,15 +109,28 @@ async fn run() -> Result<(), String> {
 
     log_info(&format!("Serving on http://{}", addr));
 
-    HttpServer::new(move || {
+    let server = HttpServer::new(move || {
         App::new()
             .app_data(app_state.clone())
             .route("/reload", web::get().to(reload_poll))
             .route("/{_:.*}", web::get().to(serve_file))
     })
     .bind(&addr)
-    .map_err(|e| listen_error(&addr, &e))?
-    .run()
+    .map_err(|e| listen_error(&addr, &e))?;
+
+    if options.open {
+        let open_host = if options.host == "0.0.0.0" {
+            "127.0.0.1"
+        } else {
+            options.host.as_str()
+        };
+        let url = format!("http://{}:{}/", open_host, options.port);
+        log_info(&format!("Opening browser: {}", url));
+        let _ = open::that(&url);
+    }
+
+    server
+        .run()
     .await
     .map_err(|e| format!("server error: {}", e))?;
 
