@@ -2,6 +2,11 @@
 
 Backlog and ideas. Check items off as you go.
 
+## Git hooks
+
+- [x] `.githooks/pre-push` — tag `v*` must match `Cargo.toml` + `Cargo.lock` webserve; optional `cargo check`
+- [ ] Team onboarding: run `git config core.hooksPath .githooks` after clone
+
 ## CI / release
 
 - [ ] Confirm `publish.yml` Rust setup action (e.g. `dtolnay/rust-toolchain@stable`) if jobs fail before `cargo publish`
