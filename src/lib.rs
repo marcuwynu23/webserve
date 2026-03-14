@@ -51,6 +51,26 @@ pub struct ServeOptions {
     pub watch: bool,
 }
 
+/// Why the chosen static root cannot be used.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum StaticDirError {
+    /// Path does not exist on disk.
+    NotFound,
+    /// Path exists but is not a directory (e.g. a file).
+    NotADirectory,
+}
+
+/// Ensures the server root exists and is a directory before binding.
+pub fn validate_static_root(path: &Path) -> Result<(), StaticDirError> {
+    if !path.exists() {
+        Err(StaticDirError::NotFound)
+    } else if !path.is_dir() {
+        Err(StaticDirError::NotADirectory)
+    } else {
+        Ok(())
+    }
+}
+
 /// Shared application state accessible by Actix handlers.
 pub struct AppState {
     pub static_dir: Arc<PathBuf>,
