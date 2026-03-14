@@ -18,7 +18,7 @@
 
 use actix_files::NamedFile;
 use actix_web::{web, HttpRequest, HttpResponse, Responder};
-use std::path::{Path, PathBuf};
+use std::path::{Component, Path, PathBuf};
 use std::sync::Arc;
 use structopt::StructOpt;
 use tokio::sync::broadcast;
@@ -71,6 +71,20 @@ pub fn validate_static_root(path: &Path) -> Result<(), StaticDirError> {
     }
 }
 
+/// Joins a URL path segment onto the serve root without allowing `..` or absolute paths.
+pub fn join_serve_path(base: &Path, request_path: &str) -> Option<PathBuf> {
+    let rel = request_path.trim_start_matches('/');
+    let mut out = base.to_path_buf();
+    for c in Path::new(rel).components() {
+        match c {
+            Component::Normal(part) => out.push(part),
+            Component::CurDir => {}
+            Component::ParentDir | Component::RootDir | Component::Prefix(_) => return None,
+        }
+    }
+    Some(out)
+}
+
 /// Shared application state accessible by Actix handlers.
 pub struct AppState {
     pub static_dir: Arc<PathBuf>,
@@ -109,8 +123,10 @@ pub async fn serve_file(
     data: web::Data<AppState>,
 ) -> actix_web::Result<impl Responder> {
     let base_dir = &data.static_dir;
-    let path = req.path().trim_start_matches('/');
-    let mut file_path = base_dir.join(path);
+    let path = req.path();
+    let Some(mut file_path) = join_serve_path(base_dir, path) else {
+        return Ok(HttpResponse::NotFound().finish());
+    };
 
     // If the request points to a directory, check for an index.html file
     if file_path.is_dir() {
@@ -135,8 +151,11 @@ pub async fn serve_file(
         return Ok(HttpResponse::NotFound().finish());
     }
 
-    // Serve file
-    let named_file = NamedFile::open_async(file_path).await?;
+    // Serve file (race: gone after exists check → 404)
+    let named_file = match NamedFile::open_async(&file_path).await {
+        Ok(f) => f,
+        Err(_) => return Ok(HttpResponse::NotFound().finish()),
+    };
 
     // Inject live reload script into HTML if watch mode is on
     if data.watch {
@@ -161,7 +180,11 @@ pub async fn serve_file(
                     addr
                 );
 
-                let mut body = tokio::fs::read(named_file.path()).await?;
+                let read_path = named_file.path().to_path_buf();
+                let mut body = match tokio::fs::read(&read_path).await {
+                    Ok(b) => b,
+                    Err(_) => return Ok(HttpResponse::InternalServerError().finish()),
+                };
                 body.extend(ws_script.as_bytes());
                 return Ok(HttpResponse::Ok().content_type("text/html").body(body));
             }
