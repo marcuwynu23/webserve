@@ -1,77 +1,34 @@
 #!/bin/sh
-# pre-push — tag v* must match Cargo.toml + Cargo.lock (fast: no compile by default).
-# Optional slow check: WEBSERVE_HOOK_RUN_CARGO=1 git push origin v1.2.3
+# OFF by default so `git push` never waits on this hook (fixes long “stack” before upload).
+# Before pushing a version tag, run either:
+#   WEBSERVE_HOOK_VERSION_CHECK=1 git push origin v1.2.1
+# or rely on CI (publish workflow already checks tag vs Cargo.toml).
 #
-# Enable: git config core.hooksPath .githooks
+# Enable hooks dir: git config core.hooksPath .githooks
 
-set -e
-REPO_ROOT=$(git rev-parse --show-toplevel)
+[ "${WEBSERVE_HOOK_VERSION_CHECK:-0}" = 1 ] || exit 0
+
+INPUT=$(cat) || true
+echo "$INPUT" | grep -q 'refs/tags/v' || exit 0
+
+REPO_ROOT=$(git rev-parse --show-toplevel) || exit 1
 cd "$REPO_ROOT" || exit 1
 
-cargo_toml_version() {
-  sed -n 's/^version = "\([^"]*\)"/\1/p' Cargo.toml | head -n1
-}
-
-cargo_lock_webserve_version() {
-  awk '
-    /^\[\[package\]\]/ { in_pkg = 0 }
-    $0 == "name = \"webserve\"" { in_pkg = 1; next }
-    in_pkg && /^version = "/ {
-      gsub(/^version = "/, "")
-      gsub(/"$/, "")
-      print
-      exit
-    }
-  ' Cargo.lock
-}
-
-TAG_PUSH=0
+toml=$(sed -n 's/^version = "\([^"]*\)"/\1/p' Cargo.toml | head -n1)
+lock=$(awk '/^\[\[package\]\]/{p=0} $0=="name = \"webserve\""{p=1;next} p&&/^version = "/{gsub(/version = "|"/,"");print;exit}' Cargo.lock)
 FAILED=0
-
-while read -r local_ref local_sha remote_ref remote_sha || true; do
-  [ -z "${remote_ref:-}" ] && continue
-  case "$remote_ref" in
+for r in $(echo "$INPUT" | awk '{print $3}'); do
+  case "$r" in
     refs/tags/v*)
-      TAG_PUSH=1
-      tag_ver=${remote_ref#refs/tags/v}
-      toml_ver=$(cargo_toml_version)
-      lock_ver=$(cargo_lock_webserve_version)
-
-      if [ -z "$toml_ver" ]; then
-        echo "pre-push: could not read version from Cargo.toml" >&2
-        FAILED=1
-        continue
-      fi
-      if [ -z "$lock_ver" ]; then
-        echo "pre-push: could not find webserve in Cargo.lock" >&2
-        FAILED=1
-        continue
-      fi
-      if [ "$tag_ver" != "$toml_ver" ]; then
-        echo "pre-push: tag v${tag_ver} != Cargo.toml \"${toml_ver}\"" >&2
-        FAILED=1
-      fi
-      if [ "$toml_ver" != "$lock_ver" ]; then
-        echo "pre-push: Cargo.toml \"${toml_ver}\" != lock \"${lock_ver}\"" >&2
-        echo "pre-push: run: cargo build && git add Cargo.lock && git commit" >&2
-        FAILED=1
-      fi
+      tv=${r#refs/tags/v}
+      [ -z "$toml" ] && echo "pre-push: no Cargo.toml version" >&2 && FAILED=1 && continue
+      [ -z "$lock" ] && echo "pre-push: no webserve in Cargo.lock" >&2 && FAILED=1 && continue
+      [ "$tv" != "$toml" ] && echo "pre-push: tag v$tv != toml $toml" >&2 && FAILED=1
+      [ "$toml" != "$lock" ] && echo "pre-push: toml $toml != lock $lock" >&2 && FAILED=1
       ;;
   esac
 done
-
-[ "$TAG_PUSH" = 0 ] && exit 0
-
-if [ "$FAILED" != 0 ]; then
-  echo "pre-push: aborting (or: git push --no-verify)" >&2
-  exit 1
-fi
-
+[ "$FAILED" != 0 ] && exit 1
 echo "pre-push: tag / Cargo.toml / Cargo.lock OK"
-
-if [ "${WEBSERVE_HOOK_RUN_CARGO:-0}" = 1 ]; then
-  echo "pre-push: running cargo check..."
-  cargo check -q || { echo "pre-push: cargo check failed" >&2; exit 1; }
-fi
-
+case "${WEBSERVE_HOOK_RUN_CARGO:-0}" in 1|true|yes) cargo check -q || exit 1 ;; esac
 exit 0
