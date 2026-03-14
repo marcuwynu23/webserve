@@ -1,45 +1,24 @@
-# Git hooks (native `core.hooksPath`)
-
-Hooks live in **`.githooks/`** so they can be committed. Git only runs them if you point **`core.hooksPath`** here.
-
-## One-time setup (per clone)
-
-From the repository root:
+# Git hooks (`core.hooksPath`)
 
 ```bash
 git config core.hooksPath .githooks
 ```
 
-That setting is **local to this repo** (stored in `.git/config`). It is **not** committed; each clone needs the command once (or add to your global docs / onboarding).
+## pre-push
 
-To use hooks in **all** clones by default, you could run the same command after `git clone`, or document it in the main README.
+| Push | Behavior |
+|------|----------|
+| **No `v*` tag** | Exits immediately (no delay). |
+| **Tag `v*`** | Compares tag ↔ `Cargo.toml` ↔ `Cargo.lock` (sed/awk only — **seconds, not minutes**). |
 
-## What runs
-
-| Hook      | When        | What it does |
-|-----------|-------------|----------------|
-| **pre-push** | Before `git push` | If the push includes a tag `v*` (e.g. `v1.2.3`), checks that **tag** (without `v`) equals **`Cargo.toml`** `version` and **`Cargo.lock`** root package `webserve` version. Then runs **`cargo check`** unless `WEBSERVE_HOOK_SKIP_CARGO=1`. |
-
-Pushes that **only** move branches (no `v*` tags) are **not** blocked by this hook.
-
-## Skip (emergency only)
+**`cargo check` does not run by default** (that was slowing pushes). To compile before push:
 
 ```bash
-git push --no-verify ...
+WEBSERVE_HOOK_RUN_CARGO=1 git push origin v1.2.3
 ```
 
-## Optional: skip `cargo check` but keep version checks
-
-Version checks always run for `v*` tag pushes. To skip only the compile step:
-
-```bash
-WEBSERVE_HOOK_SKIP_CARGO=1 git push origin v1.2.3
-```
+Skip the hook: `git push --no-verify`
 
 ## Windows
 
-Git for Windows runs hooks with `sh`; no extra install needed. If `pre-push` is not executable on Unix, run:
-
-```bash
-chmod +x .githooks/pre-push
-```
+Uses `sh` (Git Bash). Unix: `chmod +x .githooks/pre-push` if needed.

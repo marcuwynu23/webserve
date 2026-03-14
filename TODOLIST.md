@@ -4,7 +4,7 @@ Backlog and ideas. Check items off as you go.
 
 ## Git hooks
 
-- [x] `.githooks/pre-push` — tag `v*` must match `Cargo.toml` + `Cargo.lock` webserve; optional `cargo check`
+- [x] `.githooks/pre-push` — fast version-only check; `WEBSERVE_HOOK_RUN_CARGO=1` for optional `cargo check`
 - [x] Team onboarding: run `git config core.hooksPath .githooks` after clone
 
 ## CI / release
