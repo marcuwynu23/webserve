@@ -41,19 +41,25 @@ jobs:
       - name: Build release binary
         run: cargo build --release --target ${{ matrix.target }}
 
-      - name: Create archive
+      # Windows Git Bash often has no `zip`; use PowerShell Compress-Archive
+      - name: Create archive (Windows)
+        if: matrix.os == 'windows'
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force -Path release | Out-Null
+          $src = "target/${{ matrix.target }}/release/webserve.exe"
+          $zip = "release/webserve-${{ matrix.os }}-${{ matrix.target }}.zip"
+          Compress-Archive -LiteralPath $src -DestinationPath $zip -Force
+          Write-Host "Created $zip"
+
+      - name: Create archive (Linux / macOS)
+        if: matrix.os != 'windows'
         shell: bash
         run: |
           mkdir -p release
-          BIN_NAME=webserve${{ matrix.ext }}
-          SRC_PATH="target/${{ matrix.target }}/release/$BIN_NAME"
-          if [ "${{ matrix.os }}" = "windows" ]; then
-            zip -j "release/webserve-${{ matrix.os }}-${{ matrix.target }}.zip" "$SRC_PATH"
-            echo "Created release/webserve-${{ matrix.os }}-${{ matrix.target }}.zip"
-          else
-            tar -czf "release/webserve-${{ matrix.os }}-${{ matrix.target }}.tar.gz" -C "target/${{ matrix.target }}/release" "$BIN_NAME"
-            echo "Created release/webserve-${{ matrix.os }}-${{ matrix.target }}.tar.gz"
-          fi
+          BIN_NAME=webserve
+          tar -czf "release/webserve-${{ matrix.os }}-${{ matrix.target }}.tar.gz" -C "target/${{ matrix.target }}/release" "$BIN_NAME"
+          echo "Created release/webserve-${{ matrix.os }}-${{ matrix.target }}.tar.gz"
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
