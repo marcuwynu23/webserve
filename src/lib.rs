@@ -19,6 +19,7 @@
 use actix_files::NamedFile;
 use actix_web::{web, HttpRequest, HttpResponse, Responder};
 use std::path::{Component, Path, PathBuf};
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 use structopt::StructOpt;
 use tokio::sync::broadcast;
@@ -121,6 +122,8 @@ pub struct AppState {
     pub tx: broadcast::Sender<()>,
     /// Redirect GET when URL names a directory but has no trailing `/`.
     pub redirect_dir_slash: bool,
+    /// Set by filesystem watcher; `/reload` clears and tells clients to refresh.
+    pub reload_pending: Arc<AtomicBool>,
 }
 
 /// Generates a simple HTML directory listing for the given path.
@@ -212,24 +215,23 @@ pub async fn serve_file(
     if data.watch {
         if let Some(ext) = named_file.path().extension() {
             if ext == "html" {
-                let addr = &data.addr;
-                let ws_script = format!(
-                    r#"<script>
-    async function checkReload() {{
-        try {{
-            const res = await fetch("http://{}/reload");
-            if(res.ok) {{
-                location.reload();
-            }}
-        }} catch(e) {{
-            console.error(e);
-        }}
-        setTimeout(checkReload, 1000);
-    }}
-    checkReload();
-    </script>"#,
-                    addr
-                );
+                // Relative /reload + short polling (no long-lived pending requests)
+                let ws_script = r#"<script>
+(function(){
+  async function tick(){
+    try {
+      var r = await fetch("/reload", { cache: "no-store" });
+      if (r.ok && r.status === 200) {
+        var t = await r.text();
+        if (t === "reload") { location.reload(); return; }
+      }
+    } catch(e) { console.error(e); }
+    setTimeout(tick, 600);
+  }
+  tick();
+})();
+</script>"#
+                    .to_string();
 
                 let read_path = named_file.path().to_path_buf();
                 let mut body = match tokio::fs::read(&read_path).await {
@@ -245,12 +247,16 @@ pub async fn serve_file(
     Ok(named_file.into_response(&req))
 }
 
-/// Endpoint that clients poll to detect file changes.
-///
-/// When a change is detected by the file watcher,
-/// this endpoint returns an HTTP 200 response prompting the client to reload.
+/// Short poll: 200 + body `reload` if a file changed since last poll; otherwise 204 immediately.
 pub async fn reload_poll(data: web::Data<AppState>) -> impl Responder {
-    let mut rx = data.tx.subscribe();
-    let _ = rx.recv().await; // Wait for broadcast event
-    HttpResponse::Ok().body("reload")
+    if data
+        .reload_pending
+        .swap(false, Ordering::SeqCst)
+    {
+        HttpResponse::Ok()
+            .content_type("text/plain")
+            .body("reload")
+    } else {
+        HttpResponse::NoContent().finish()
+    }
 }

@@ -3,6 +3,7 @@
 use actix_web::{test, web, App as ActixApp};
 use std::fs;
 use std::io::Write;
+use std::sync::atomic::AtomicBool;
 use std::sync::Arc;
 use tempfile::TempDir;
 use tokio::sync::broadcast;
@@ -44,6 +45,7 @@ async fn test_serve_file_existing_file() {
         addr: "127.0.0.1:8080".to_string(),
         tx,
         redirect_dir_slash: true,
+        reload_pending: Arc::new(AtomicBool::new(false)),
     });
 
     let app = ActixApp::new()
@@ -68,6 +70,7 @@ async fn test_serve_file_not_found() {
         addr: "127.0.0.1:8080".to_string(),
         tx,
         redirect_dir_slash: true,
+        reload_pending: Arc::new(AtomicBool::new(false)),
     });
 
     let app = ActixApp::new()
@@ -99,6 +102,7 @@ async fn test_serve_file_spa_fallback() {
         addr: "127.0.0.1:8080".to_string(),
         tx,
         redirect_dir_slash: true,
+        reload_pending: Arc::new(AtomicBool::new(false)),
     });
 
     let app = ActixApp::new()
@@ -128,6 +132,7 @@ async fn test_serve_file_directory_listing() {
         addr: "127.0.0.1:8080".to_string(),
         tx,
         redirect_dir_slash: true,
+        reload_pending: Arc::new(AtomicBool::new(false)),
     });
 
     let app = ActixApp::new()
@@ -146,9 +151,11 @@ async fn test_serve_file_directory_listing() {
 
 #[actix_web::test]
 async fn test_reload_poll() {
+    use std::sync::atomic::Ordering;
     let temp_dir = TempDir::new().unwrap();
     let static_dir = Arc::new(temp_dir.path().to_path_buf());
     let (tx, _) = broadcast::channel::<()>(16);
+    let reload_pending = Arc::new(AtomicBool::new(false));
     let app_state = web::Data::new(AppState {
         static_dir,
         watch: false,
@@ -156,6 +163,7 @@ async fn test_reload_poll() {
         addr: "127.0.0.1:8080".to_string(),
         tx: tx.clone(),
         redirect_dir_slash: true,
+        reload_pending: reload_pending.clone(),
     });
 
     let app = ActixApp::new()
@@ -164,14 +172,11 @@ async fn test_reload_poll() {
 
     let mut app = test::init_service(app).await;
 
-    // Send a reload signal after the service is initialized
-    // Use tokio::spawn to send it asynchronously so the handler can receive it
-    let tx_clone = tx.clone();
-    tokio::spawn(async move {
-        tokio::time::sleep(tokio::time::Duration::from_millis(10)).await;
-        let _ = tx_clone.send(());
-    });
+    let req = test::TestRequest::get().uri("/reload").to_request();
+    let resp = test::call_service(&mut app, req).await;
+    assert_eq!(resp.status(), actix_web::http::StatusCode::NO_CONTENT);
 
+    reload_pending.store(true, Ordering::SeqCst);
     let req = test::TestRequest::get().uri("/reload").to_request();
     let resp = test::call_service(&mut app, req).await;
     assert!(resp.status().is_success());
