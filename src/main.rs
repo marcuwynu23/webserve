@@ -4,6 +4,7 @@ use actix_web::{web, App, HttpServer};
 use notify::{RecommendedWatcher, RecursiveMode, Watcher};
 use std::io;
 use std::path::Path;
+use std::sync::atomic::AtomicBool;
 use std::sync::Arc;
 use std::thread;
 use std::time::Duration;
@@ -58,6 +59,7 @@ async fn run() -> Result<(), String> {
 
     let addr = format!("{}:{}", options.host, options.port);
     let (tx, _rx) = broadcast::channel::<()>(16);
+    let reload_pending = Arc::new(AtomicBool::new(false));
 
     log_info("Starting webserve");
     log_info(&format!("Directory: {}", static_dir.display()));
@@ -83,14 +85,17 @@ async fn run() -> Result<(), String> {
         addr: addr.clone(),
         tx: tx.clone(),
         redirect_dir_slash: !options.no_redirect_dir_slash,
+        reload_pending: reload_pending.clone(),
     });
 
     if options.watch {
         let watch_path = static_dir.clone();
         let tx_watcher = tx.clone();
+        let reload_flag = reload_pending.clone();
         let mut watcher: RecommendedWatcher =
             notify::recommended_watcher(move |res: notify::Result<notify::Event>| {
                 if res.is_ok() {
+                    reload_flag.store(true, std::sync::atomic::Ordering::SeqCst);
                     let _ = tx_watcher.send(());
                 }
             })

@@ -44,6 +44,7 @@ fn join_serve_path_rejects_traversal() {
 #[actix_web::test]
 async fn serve_file_rejects_parent_dir() {
     use actix_web::{test, web, App as ActixApp};
+    use std::sync::atomic::AtomicBool;
     use std::sync::Arc;
     use tempfile::TempDir;
     use tokio::sync::broadcast;
@@ -59,6 +60,7 @@ async fn serve_file_rejects_parent_dir() {
         addr: "127.0.0.1:8080".to_string(),
         tx,
         redirect_dir_slash: true,
+        reload_pending: Arc::new(AtomicBool::new(false)),
     });
     let app = ActixApp::new()
         .app_data(app_state)
@@ -100,6 +102,7 @@ async fn serve_file_redirects_directory_without_slash() {
         addr: "127.0.0.1:8080".to_string(),
         tx,
         redirect_dir_slash: true,
+        reload_pending: Arc::new(std::sync::atomic::AtomicBool::new(false)),
     });
     let app = ActixApp::new()
         .app_data(app_state)
