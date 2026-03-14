@@ -42,15 +42,16 @@ jobs:
         run: cargo build --release --target ${{ matrix.target }}
 
       - name: Create archive
+        shell: bash
         run: |
           mkdir -p release
           BIN_NAME=webserve${{ matrix.ext }}
-          SRC_PATH=target/${{ matrix.target }}/release/$BIN_NAME
-          if [ "${{ matrix.os }}" == "windows" ]; then
-            zip -j release/webserve-${{ matrix.os }}-${{ matrix.target }}.zip $SRC_PATH
+          SRC_PATH="target/${{ matrix.target }}/release/$BIN_NAME"
+          if [ "${{ matrix.os }}" = "windows" ]; then
+            zip -j "release/webserve-${{ matrix.os }}-${{ matrix.target }}.zip" "$SRC_PATH"
             echo "Created release/webserve-${{ matrix.os }}-${{ matrix.target }}.zip"
           else
-            tar -czf release/webserve-${{ matrix.os }}-${{ matrix.target }}.tar.gz -C target/${{ matrix.target }}/release $BIN_NAME
+            tar -czf "release/webserve-${{ matrix.os }}-${{ matrix.target }}.tar.gz" -C "target/${{ matrix.target }}/release" "$BIN_NAME"
             echo "Created release/webserve-${{ matrix.os }}-${{ matrix.target }}.tar.gz"
           fi
 
