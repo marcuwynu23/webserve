@@ -162,10 +162,11 @@ pub async fn directory_listing(path: &Path, url_prefix: &str) -> String {
     files.sort_by(|a, b| a.name.to_lowercase().cmp(&b.name.to_lowercase()));
 
     let breadcrumb = format_breadcrumb(url_prefix);
-    let title = if url_prefix == "/" {
-        "Index of /"
+    let path_for_title = url_prefix.trim_end_matches('/');
+    let title = if path_for_title.is_empty() || path_for_title == "/" {
+        "Index of /".to_string()
     } else {
-        &breadcrumb
+        format!("Index of {}", path_for_title)
     };
 
     let mut rows = String::new();
@@ -173,13 +174,23 @@ pub async fn directory_listing(path: &Path, url_prefix: &str) -> String {
     let base = if base.is_empty() { "/" } else { base };
 
     for e in dirs {
-        let href = format!("{}/{}/", base, percent_encode_path_segment(&e.name));
+        let encoded = percent_encode_path_segment(&e.name);
+        let href = if base == "/" {
+            format!("/{}/", encoded)
+        } else {
+            format!("{}/{}/", base, encoded)
+        };
         let size_str = String::from("—");
         let date_str = format_time(e.modified);
         rows.push_str(&format_entry_row(&e.name, &href, true, &size_str, &date_str));
     }
     for e in files {
-        let href = format!("{}/{}", base, percent_encode_path_segment(&e.name));
+        let encoded = percent_encode_path_segment(&e.name);
+        let href = if base == "/" {
+            format!("/{}", encoded)
+        } else {
+            format!("{}/{}", base, encoded)
+        };
         let size_str = format_size(e.size.unwrap_or(0));
         let date_str = format_time(e.modified);
         rows.push_str(&format_entry_row(&e.name, &href, false, &size_str, &date_str));
@@ -366,7 +377,7 @@ pub async fn directory_listing(path: &Path, url_prefix: &str) -> String {
   </script>
 </body>
 </html>"#,
-        title = html_escape(title),
+        title = html_escape(&title),
         breadcrumb_html = breadcrumb,
         rows = rows,
     )
