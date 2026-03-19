@@ -271,16 +271,24 @@ pub async fn directory_listing(path: &Path, url_prefix: &str) -> String {
     .breadcrumb span {{ color: var(--text-muted); margin: 0 0.35rem; }}
     .theme-toggle {{
       flex-shrink: 0;
-      padding: 0.4rem 0.75rem;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 2.25rem;
+      height: 2.25rem;
+      padding: 0;
       border: 1px solid var(--border);
       border-radius: 8px;
       background: var(--surface);
       color: var(--text);
-      font-family: inherit;
-      font-size: 0.875rem;
       cursor: pointer;
     }}
     .theme-toggle:hover {{ background: var(--hover-bg); }}
+    .theme-toggle .theme-icon {{ width: 1.2rem; height: 1.2rem; }}
+    .theme-toggle .theme-icon-sun {{ display: none; }}
+    .theme-toggle .theme-icon-moon {{ display: block; }}
+    [data-theme="dark"] .theme-toggle .theme-icon-sun {{ display: block; }}
+    [data-theme="dark"] .theme-toggle .theme-icon-moon {{ display: none; }}
     table {{
       width: 100%;
       border-collapse: collapse;
@@ -339,7 +347,10 @@ pub async fn directory_listing(path: &Path, url_prefix: &str) -> String {
         <h1>{title}</h1>
         <nav class="breadcrumb" aria-label="Breadcrumb">{breadcrumb_html}</nav>
       </div>
-      <button type="button" class="theme-toggle" id="theme-toggle" aria-label="Toggle light/dark mode">Dark</button>
+      <button type="button" class="theme-toggle" id="theme-toggle" aria-label="Toggle light/dark mode">
+        <svg class="theme-icon theme-icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg>
+        <svg class="theme-icon theme-icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+      </button>
     </div>
     <table>
       <thead>
@@ -360,8 +371,6 @@ pub async fn directory_listing(path: &Path, url_prefix: &str) -> String {
       var dark = false;
       function apply() {{
         document.documentElement.setAttribute('data-theme', dark ? 'dark' : 'light');
-        var btn = document.getElementById('theme-toggle');
-        if (btn) {{ btn.textContent = dark ? 'Dark' : 'Light'; }}
       }}
       try {{
         var s = localStorage.getItem(key);
