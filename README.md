@@ -56,6 +56,12 @@ Binary: `target/release/webserve` (or `webserve.exe` on Windows).
 cargo install --path .
 ```
 
+**Install from registry***
+
+```bash
+cargo install webserve
+```
+
 ---
 
 ## Usage
