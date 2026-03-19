@@ -12,9 +12,10 @@ use webserve::{directory_listing, reload_poll, serve_file, AppState};
 #[tokio::test]
 async fn test_directory_listing_empty() {
     let temp_dir = TempDir::new().unwrap();
-    let listing = directory_listing(temp_dir.path()).await;
-    assert!(listing.contains("<ul>"));
-    assert!(listing.contains("</ul>"));
+    let listing = directory_listing(temp_dir.path(), "/").await;
+    assert!(listing.contains("Index of /"));
+    assert!(listing.contains("<table>"));
+    assert!(listing.contains("</tbody>"));
 }
 
 #[tokio::test]
@@ -23,9 +24,9 @@ async fn test_directory_listing_with_files() {
     let file_path = temp_dir.path().join("test.txt");
     fs::File::create(&file_path).unwrap();
 
-    let listing = directory_listing(temp_dir.path()).await;
+    let listing = directory_listing(temp_dir.path(), "/").await;
     assert!(listing.contains("test.txt"));
-    assert!(listing.contains("<a href="));
+    assert!(listing.contains("<a class="));
 }
 
 #[actix_web::test]
@@ -146,7 +147,7 @@ async fn test_serve_file_directory_listing() {
     let body = test::read_body(resp).await;
     let body_str = String::from_utf8(body.to_vec()).unwrap();
     assert!(body_str.contains("test.txt"));
-    assert!(body_str.contains("<ul>"));
+    assert!(body_str.contains("<table>"));
 }
 
 #[actix_web::test]
