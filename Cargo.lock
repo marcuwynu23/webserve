@@ -1807,6 +1807,7 @@ dependencies = [
  "actix-files",
  "actix-web",
  "actix-web-actors",
+ "bytes",
  "futures",
  "futures-util",
  "mime_guess",

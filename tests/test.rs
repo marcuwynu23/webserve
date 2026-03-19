@@ -47,6 +47,7 @@ async fn test_serve_file_existing_file() {
         tx,
         redirect_dir_slash: true,
         reload_pending: Arc::new(AtomicBool::new(false)),
+        html_cache: None,
     });
 
     let app = ActixApp::new()
@@ -72,6 +73,7 @@ async fn test_serve_file_not_found() {
         tx,
         redirect_dir_slash: true,
         reload_pending: Arc::new(AtomicBool::new(false)),
+        html_cache: None,
     });
 
     let app = ActixApp::new()
@@ -104,6 +106,7 @@ async fn test_serve_file_spa_fallback() {
         tx,
         redirect_dir_slash: true,
         reload_pending: Arc::new(AtomicBool::new(false)),
+        html_cache: None,
     });
 
     let app = ActixApp::new()
@@ -134,6 +137,7 @@ async fn test_serve_file_directory_listing() {
         tx,
         redirect_dir_slash: true,
         reload_pending: Arc::new(AtomicBool::new(false)),
+        html_cache: None,
     });
 
     let app = ActixApp::new()
@@ -165,6 +169,7 @@ async fn test_reload_poll() {
         tx: tx.clone(),
         redirect_dir_slash: true,
         reload_pending: reload_pending.clone(),
+        html_cache: None,
     });
 
     let app = ActixApp::new()

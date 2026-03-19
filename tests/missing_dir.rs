@@ -61,6 +61,7 @@ async fn serve_file_rejects_parent_dir() {
         tx,
         redirect_dir_slash: true,
         reload_pending: Arc::new(AtomicBool::new(false)),
+        html_cache: None,
     });
     let app = ActixApp::new()
         .app_data(app_state)
@@ -103,6 +104,7 @@ async fn serve_file_redirects_directory_without_slash() {
         tx,
         redirect_dir_slash: true,
         reload_pending: Arc::new(std::sync::atomic::AtomicBool::new(false)),
+        html_cache: None,
     });
     let app = ActixApp::new()
         .app_data(app_state)
