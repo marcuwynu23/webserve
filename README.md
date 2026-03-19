@@ -22,12 +22,13 @@
 
 | Capability | Description |
 |------------|-------------|
-| Static hosting | Serve any folder; optional directory listing when no `index.html` is present |
+| Static hosting | Serve any folder; directory listing when no `index.html` is present |
+| Directory listing UI | Full-width layout, breadcrumbs, folders first then files; name, size, modified; light/dark theme with icon toggle (persisted) |
 | SPA mode | `--spa` — unknown paths serve `index.html` (client-side routing) |
 | Live reload | `--watch` — filesystem watcher + injected reload script for HTML |
 | Open browser | `--open` — after bind, open default browser (uses `127.0.0.1` when host is `0.0.0.0`) |
 | URL normalization | Collapses `//` and `.` segments; directory URLs get a trailing `/` redirect (disable with `--no-redirect-dir-slash`) |
-| Binding | Configurable `--host` and `--port` (defaults: `127.0.0.1`, `8080`) |
+| Binding | Configurable `--host` and `--port` (defaults: `127.0.0.1`, `8080`); if port is in use, tries next port until one is free |
 
 ---
 
