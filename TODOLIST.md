@@ -16,7 +16,7 @@ Backlog and ideas. Check items off as you go.
 ## crates.io / packaging
 
 - [ ] Keep `[package]` metadata filled: `repository`, `homepage`, `documentation`
-- [ ] Commit `Cargo.lock` before every publish; tag must match `version` in `Cargo.toml`
+- [x] Commit `Cargo.lock` before every publish; tag must match `version` in `Cargo.toml`
 - [ ] After each release, bump patch (or minor) for the next publish attempt
 
 ## Performance (when needed)
