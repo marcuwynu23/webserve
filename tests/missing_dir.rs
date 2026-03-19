@@ -1,4 +1,4 @@
-//! Ensures a missing --dir produces a clear error (no silent bind).
+//! Error-path integration tests: missing dir, dir is file, path traversal, redirects.
 
 use std::process::Command;
 
@@ -21,6 +21,31 @@ fn missing_dir_exits_nonzero_and_stderr_helpful() {
     assert!(
         stderr.contains(&want) || stderr.trim().ends_with("not found"),
         "stderr should be '<path> not found': {:?}",
+        stderr
+    );
+}
+
+/// --dir pointing to a regular file (not a directory) exits non-zero and stderr mentions "not a directory".
+#[test]
+fn dir_is_file_exits_nonzero_and_stderr_not_a_directory() {
+    let temp = tempfile::TempDir::new().unwrap();
+    let file_path = temp.path().join("a_file.txt");
+    std::fs::write(&file_path, b"x").unwrap();
+    assert!(file_path.is_file());
+
+    let output = Command::new(env!("CARGO_BIN_EXE_webserve"))
+        .args(["--dir", file_path.to_str().unwrap()])
+        .output()
+        .expect("run webserve binary");
+
+    assert!(
+        !output.status.success(),
+        "expected failure when --dir is a file"
+    );
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    assert!(
+        stderr.contains("not a directory"),
+        "stderr should mention 'not a directory': {:?}",
         stderr
     );
 }
@@ -82,6 +107,18 @@ fn normalize_url_path_collapses_slashes() {
     assert!(normalize_url_path("/../x").is_none());
 }
 
+#[test]
+fn normalize_url_path_dot_and_traversal() {
+    use webserve::normalize_url_path;
+    assert_eq!(normalize_url_path(".").as_deref(), Some("/"));
+    assert_eq!(normalize_url_path("/.").as_deref(), Some("/"));
+    assert_eq!(normalize_url_path("/a/./b").as_deref(), Some("/a/b"));
+    assert!(normalize_url_path("/a/../a").is_none());
+    assert!(normalize_url_path("/a/..").is_none());
+    assert!(normalize_url_path("/a/../..").is_none());
+    assert_eq!(normalize_url_path("/foo/bar").as_deref(), Some("/foo/bar"));
+}
+
 #[actix_web::test]
 async fn serve_file_redirects_directory_without_slash() {
     use actix_web::{test, web, App as ActixApp};
@@ -120,6 +157,47 @@ async fn serve_file_redirects_directory_without_slash() {
         resp.headers().get("location").unwrap().to_str().unwrap(),
         "/docs/"
     );
+}
+
+#[actix_web::test]
+async fn serve_file_no_redirect_dir_slash_serves_index() {
+    use actix_web::{test, web, App as ActixApp};
+    use std::fs;
+    use std::sync::atomic::AtomicBool;
+    use std::sync::Arc;
+    use tempfile::TempDir;
+    use tokio::sync::broadcast;
+    use webserve::{serve_file, AppState};
+
+    let temp_dir = TempDir::new().unwrap();
+    fs::create_dir(temp_dir.path().join("sub")).unwrap();
+    fs::write(
+        temp_dir.path().join("sub").join("index.html"),
+        b"<p>sub index</p>",
+    )
+    .unwrap();
+    let static_dir = Arc::new(temp_dir.path().to_path_buf());
+    let (tx, _) = broadcast::channel::<()>(16);
+    let app_state = web::Data::new(AppState {
+        static_dir,
+        watch: false,
+        spa: false,
+        addr: "127.0.0.1:8080".to_string(),
+        tx,
+        redirect_dir_slash: false,
+        reload_pending: Arc::new(AtomicBool::new(false)),
+        html_cache: None,
+    });
+    let app = ActixApp::new()
+        .app_data(app_state)
+        .route("/{_:.*}", web::get().to(serve_file));
+    let mut app = test::init_service(app).await;
+    let req = test::TestRequest::get().uri("/sub").to_request();
+    let resp = test::call_service(&mut app, req).await;
+    assert_eq!(resp.status(), actix_web::http::StatusCode::OK);
+    let body = test::read_body(resp).await;
+    let body_str = String::from_utf8(body.to_vec()).unwrap();
+    assert!(body_str.contains("sub index"));
 }
 
 #[test]
