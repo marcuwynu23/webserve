@@ -2,12 +2,18 @@
 
 use actix_files::NamedFile;
 use actix_web::{web, HttpRequest, HttpResponse, Responder};
+use bytes::Bytes;
+use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
+use std::sync::RwLock;
 use tokio::sync::broadcast;
 
 use crate::path::{join_serve_path, normalize_url_path};
+
+/// Cache for HTML file bodies with reload script injected (used only when `--watch`).
+pub type HtmlCache = Arc<RwLock<HashMap<PathBuf, Bytes>>>;
 
 /// Shared application state accessible by Actix handlers.
 pub struct AppState {
@@ -20,6 +26,8 @@ pub struct AppState {
     pub redirect_dir_slash: bool,
     /// Set by filesystem watcher; `/reload` clears and tells clients to refresh.
     pub reload_pending: Arc<AtomicBool>,
+    /// When `--watch`: cache of path → injected HTML body; cleared when watcher fires.
+    pub html_cache: Option<HtmlCache>,
 }
 
 /// Entry for one file or directory in a listing.
@@ -484,12 +492,21 @@ pub async fn serve_file(
         Err(_) => return Ok(HttpResponse::NotFound().finish()),
     };
 
-    // Inject live reload script into HTML if watch mode is on
+    // Inject live reload script into HTML if watch mode is on; use cache to avoid per-request read+inject
     if data.watch {
         if let Some(ext) = named_file.path().extension() {
             if ext == "html" {
-                // Relative /reload + short polling (no long-lived pending requests)
-                let ws_script = r#"<script>
+                if let Some(ref cache) = data.html_cache {
+                    if let Ok(guard) = cache.read() {
+                        if let Some(cached) = guard.get(&file_path) {
+                            return Ok(HttpResponse::Ok()
+                                .content_type("text/html")
+                                .body(cached.clone()));
+                        }
+                    }
+                }
+
+                const RELOAD_SCRIPT: &str = r#"<script>
 (function(){
   async function tick(){
     try {
@@ -503,16 +520,24 @@ pub async fn serve_file(
   }
   tick();
 })();
-</script>"#
-                    .to_string();
+</script>"#;
 
                 let read_path = named_file.path().to_path_buf();
                 let mut body = match tokio::fs::read(&read_path).await {
                     Ok(b) => b,
                     Err(_) => return Ok(HttpResponse::InternalServerError().finish()),
                 };
-                body.extend(ws_script.as_bytes());
-                return Ok(HttpResponse::Ok().content_type("text/html").body(body));
+                body.extend_from_slice(RELOAD_SCRIPT.as_bytes());
+                let body_bytes = Bytes::from(body);
+
+                if let Some(ref cache) = data.html_cache {
+                    if let Ok(mut guard) = cache.write() {
+                        guard.insert(file_path, body_bytes.clone());
+                    }
+                }
+                return Ok(HttpResponse::Ok()
+                    .content_type("text/html")
+                    .body(body_bytes));
             }
         }
     }

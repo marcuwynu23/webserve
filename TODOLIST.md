@@ -23,7 +23,7 @@ Backlog and ideas. Check items off as you go.
 
 - [ ] Add `Cache-Control` / `ETag` for static assets
 - [ ] Optional: gzip/brotli (middleware or document reverse proxy)
-- [ ] Optional: reduce per-request work for `--watch` HTML (cache injected body or inject once)
+- [x] Optional: reduce per-request work for `--watch` HTML (cache injected body or inject once)
 
 ## Features (DX)
 
