@@ -39,7 +39,7 @@ Backlog and ideas. Check items off as you go.
 
 ## Code quality
 
-- [ ] Split `lib.rs` into modules (`serve`, `cli`, `path`) when it grows
+- [x] Split `lib.rs` into modules (`serve`, `cli`, `path`) when it grows
 - [ ] More integration tests for CLI and error paths
 
 ## Docs
