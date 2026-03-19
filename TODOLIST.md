@@ -44,8 +44,8 @@ Backlog and ideas. Check items off as you go.
 
 ## Docs
 
-- [ ] README: `cargo install webserve` from crates.io
-- [ ] README: troubleshooting (port in use, missing `--dir`, publish/tag flow)
+- [x] README: `cargo install webserve` from crates.io
+- [x] README: troubleshooting (port in use, missing `--dir`, publish/tag flow)
 
 ---
 
