@@ -57,7 +57,6 @@ async fn run() -> Result<(), String> {
         fail_static_dir(&static_dir, e);
     }
 
-    let addr = format!("{}:{}", options.host, options.port);
     let (tx, _rx) = broadcast::channel::<()>(16);
     let reload_pending = Arc::new(AtomicBool::new(false));
 
@@ -77,16 +76,6 @@ async fn run() -> Result<(), String> {
     if options.no_redirect_dir_slash {
         log_info("Directory slash redirect: disabled");
     }
-
-    let app_state = web::Data::new(AppState {
-        static_dir: static_dir.clone(),
-        watch: options.watch,
-        spa: options.spa,
-        addr: addr.clone(),
-        tx: tx.clone(),
-        redirect_dir_slash: !options.no_redirect_dir_slash,
-        reload_pending: reload_pending.clone(),
-    });
 
     if options.watch {
         let watch_path = static_dir.clone();
@@ -112,16 +101,40 @@ async fn run() -> Result<(), String> {
         log_info(&format!("Watching directory: {}", watch_path.display()));
     }
 
-    log_info(&format!("Serving on http://{}", addr));
+    let mut port = options.port;
+    let (server, bound_addr, actual_port) = loop {
+        let addr = format!("{}:{}", options.host, port);
+        let app_state = web::Data::new(AppState {
+            static_dir: static_dir.clone(),
+            watch: options.watch,
+            spa: options.spa,
+            addr: addr.clone(),
+            tx: tx.clone(),
+            redirect_dir_slash: !options.no_redirect_dir_slash,
+            reload_pending: reload_pending.clone(),
+        });
+        match HttpServer::new(move || {
+            App::new()
+                .app_data(app_state.clone())
+                .route("/reload", web::get().to(reload_poll))
+                .route("/{_:.*}", web::get().to(serve_file))
+        })
+        .bind(&addr)
+        {
+            Ok(s) => break (s, addr, port),
+            Err(e) if e.kind() == io::ErrorKind::AddrInUse => {
+                let next = port.wrapping_add(1);
+                if next == 0 {
+                    return Err("no available port".into());
+                }
+                log_info(&format!("Port {} in use, trying {}...", port, next));
+                port = next;
+            }
+            Err(e) => return Err(listen_error(&addr, &e)),
+        }
+    };
 
-    let server = HttpServer::new(move || {
-        App::new()
-            .app_data(app_state.clone())
-            .route("/reload", web::get().to(reload_poll))
-            .route("/{_:.*}", web::get().to(serve_file))
-    })
-    .bind(&addr)
-    .map_err(|e| listen_error(&addr, &e))?;
+    log_info(&format!("Serving on http://{}", bound_addr));
 
     if options.open {
         let open_host = if options.host == "0.0.0.0" {
@@ -129,15 +142,15 @@ async fn run() -> Result<(), String> {
         } else {
             options.host.as_str()
         };
-        let url = format!("http://{}:{}/", open_host, options.port);
+        let url = format!("http://{}:{}/", open_host, actual_port);
         log_info(&format!("Opening browser: {}", url));
         let _ = open::that(&url);
     }
 
     server
         .run()
-    .await
-    .map_err(|e| format!("server error: {}", e))?;
+        .await
+        .map_err(|e| format!("server error: {}", e))?;
 
     Ok(())
 }
