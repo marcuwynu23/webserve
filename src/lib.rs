@@ -16,10 +16,10 @@
 //! webserve --dir ./public --port 3000 --watch --spa
 //! ```
 
-pub mod cli;
 pub mod path;
 pub mod serve;
+pub mod types;
 
-pub use cli::ServeOptions;
-pub use path::{join_serve_path, normalize_url_path, validate_static_root, StaticDirError};
-pub use serve::{directory_listing, reload_poll, serve_file, AppState};
+pub use path::{join_serve_path, normalize_url_path, validate_static_root};
+pub use serve::{directory_listing, reload_poll, serve_file};
+pub use types::{AppState, DirEntry, ServeOptions, StaticDirError};

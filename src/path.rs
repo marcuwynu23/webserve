@@ -2,14 +2,7 @@
 
 use std::path::{Component, Path, PathBuf};
 
-/// Why the chosen static root cannot be used.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum StaticDirError {
-    /// Path does not exist on disk.
-    NotFound,
-    /// Path exists but is not a directory (e.g. a file).
-    NotADirectory,
-}
+use crate::StaticDirError;
 
 /// Ensures the server root exists and is a directory before binding.
 pub fn validate_static_root(path: &Path) -> Result<(), StaticDirError> {

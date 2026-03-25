@@ -1,42 +1,14 @@
 //! HTTP serving: app state, directory listing, file handler, reload poll.
 
+use crate::path::{join_serve_path, normalize_url_path};
 use actix_files::NamedFile;
 use actix_web::{web, HttpRequest, HttpResponse, Responder};
 use bytes::Bytes;
-use std::collections::HashMap;
-use std::path::{Path, PathBuf};
-use std::sync::atomic::{AtomicBool, Ordering};
-use std::sync::Arc;
-use std::sync::RwLock;
-use tokio::sync::broadcast;
+use std::path::Path;
+use std::sync::atomic::Ordering;
 
-use crate::path::{join_serve_path, normalize_url_path};
-
+use crate::{AppState, DirEntry};
 /// Cache for HTML file bodies with reload script injected (used only when `--watch`).
-pub type HtmlCache = Arc<RwLock<HashMap<PathBuf, Bytes>>>;
-
-/// Shared application state accessible by Actix handlers.
-pub struct AppState {
-    pub static_dir: Arc<PathBuf>,
-    pub watch: bool,
-    pub spa: bool,
-    pub addr: String,
-    pub tx: broadcast::Sender<()>,
-    /// Redirect GET when URL names a directory but has no trailing `/`.
-    pub redirect_dir_slash: bool,
-    /// Set by filesystem watcher; `/reload` clears and tells clients to refresh.
-    pub reload_pending: Arc<AtomicBool>,
-    /// When `--watch`: cache of path → injected HTML body; cleared when watcher fires.
-    pub html_cache: Option<HtmlCache>,
-}
-
-/// Entry for one file or directory in a listing.
-struct DirEntry {
-    name: String,
-    is_dir: bool,
-    size: Option<u64>,
-    modified: Option<std::time::SystemTime>,
-}
 
 /// Generates a full HTML page with a styled directory listing.
 ///
@@ -50,10 +22,17 @@ pub async fn directory_listing(path: &Path, url_prefix: &str) -> String {
             let name = entry.file_name().to_string_lossy().to_string();
             let meta = entry.metadata().ok();
             let is_dir = meta.as_ref().map(|m| m.is_dir()).unwrap_or(false);
-            let size = meta.as_ref().and_then(|m| if m.is_file() { Some(m.len()) } else { None });
+            let size = meta
+                .as_ref()
+                .and_then(|m| if m.is_file() { Some(m.len()) } else { None });
             let modified = meta.and_then(|m| m.modified().ok());
 
-            let e = DirEntry { name, is_dir, size, modified };
+            let e = DirEntry {
+                name,
+                is_dir,
+                size,
+                modified,
+            };
             if e.is_dir {
                 dirs.push(e);
             } else {
@@ -86,7 +65,9 @@ pub async fn directory_listing(path: &Path, url_prefix: &str) -> String {
         };
         let size_str = String::from("—");
         let date_str = format_time(e.modified);
-        rows.push_str(&format_entry_row(&e.name, &href, true, &size_str, &date_str));
+        rows.push_str(&format_entry_row(
+            &e.name, &href, true, &size_str, &date_str,
+        ));
     }
     for e in files {
         let encoded = percent_encode_path_segment(&e.name);
@@ -97,7 +78,9 @@ pub async fn directory_listing(path: &Path, url_prefix: &str) -> String {
         };
         let size_str = format_size(e.size.unwrap_or(0));
         let date_str = format_time(e.modified);
-        rows.push_str(&format_entry_row(&e.name, &href, false, &size_str, &date_str));
+        rows.push_str(&format_entry_row(
+            &e.name, &href, false, &size_str, &date_str,
+        ));
     }
 
     format!(
@@ -323,7 +306,9 @@ fn percent_encode_path_segment(s: &str) -> String {
             '&' => out.push_str("%26"),
             '=' => out.push_str("%3D"),
             '+' => out.push_str("%2B"),
-            c if c.is_ascii() && !c.is_ascii_alphanumeric() && "-_.!~*'()".contains(c) => out.push(c),
+            c if c.is_ascii() && !c.is_ascii_alphanumeric() && "-_.!~*'()".contains(c) => {
+                out.push(c)
+            }
             c if c.is_ascii_alphanumeric() => out.push(c),
             c => {
                 for b in c.to_string().as_bytes() {
@@ -359,7 +344,9 @@ fn format_breadcrumb(url_prefix: &str) -> String {
 
 fn format_time(t: Option<std::time::SystemTime>) -> String {
     let Some(t) = t else { return "—".to_string() };
-    let Ok(d) = t.duration_since(std::time::UNIX_EPOCH) else { return "—".to_string() };
+    let Ok(d) = t.duration_since(std::time::UNIX_EPOCH) else {
+        return "—".to_string();
+    };
     let secs = d.as_secs();
     let days = secs / 86400;
     let time = secs % 86400;
@@ -367,7 +354,10 @@ fn format_time(t: Option<std::time::SystemTime>) -> String {
     let m = (time % 3600) / 60;
     let s = time % 60;
     let (y, month, day) = days_to_ymd(days as u32);
-    format!("{:04}-{:02}-{:02} {:02}:{:02}:{:02}", y, month, day, h, m, s)
+    format!(
+        "{:04}-{:02}-{:02} {:02}:{:02}:{:02}",
+        y, month, day, h, m, s
+    )
 }
 
 fn days_to_ymd(days: u32) -> (u32, u32, u32) {
@@ -451,7 +441,10 @@ pub async fn serve_file(
         };
         let mut r = HttpResponse::build(actix_web::http::StatusCode::TEMPORARY_REDIRECT);
         if let Some(q) = req.uri().query() {
-            r.insert_header((actix_web::http::header::LOCATION, format!("{}?{}", location, q)));
+            r.insert_header((
+                actix_web::http::header::LOCATION,
+                format!("{}?{}", location, q),
+            ));
         } else {
             r.insert_header((actix_web::http::header::LOCATION, location));
         }
@@ -547,13 +540,8 @@ pub async fn serve_file(
 
 /// Short poll: 200 + body `reload` if a file changed since last poll; otherwise 204 immediately.
 pub async fn reload_poll(data: web::Data<AppState>) -> impl Responder {
-    if data
-        .reload_pending
-        .swap(false, Ordering::SeqCst)
-    {
-        HttpResponse::Ok()
-            .content_type("text/plain")
-            .body("reload")
+    if data.reload_pending.swap(false, Ordering::SeqCst) {
+        HttpResponse::Ok().content_type("text/plain").body("reload")
     } else {
         HttpResponse::NoContent().finish()
     }

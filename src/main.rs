@@ -95,7 +95,7 @@ async fn run() -> Result<(), String> {
                     }
                 }
             })
-        .map_err(|e| format!("file watch unavailable: {}", e))?;
+            .map_err(|e| format!("file watch unavailable: {}", e))?;
         watcher
             .watch(&watch_path, RecursiveMode::Recursive)
             .map_err(|e| format!("cannot watch {}: {}", watch_path.display(), e))?;
