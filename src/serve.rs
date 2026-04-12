@@ -8,7 +8,6 @@ use std::path::Path;
 use std::sync::atomic::Ordering;
 
 use crate::{AppState, DirEntry};
-/// Cache for HTML file bodies with reload script injected (used only when `--watch`).
 
 /// Generates a full HTML page with a styled directory listing.
 ///
@@ -328,7 +327,7 @@ fn format_breadcrumb(url_prefix: &str) -> String {
     let segments: Vec<&str> = path.split('/').filter(|s| !s.is_empty()).collect();
     let mut html = String::from(r#"<a href="/">/</a>"#);
     let mut acc = String::from("/");
-    for (_i, seg) in segments.iter().enumerate() {
+    for seg in segments.iter() {
         acc.push_str(seg);
         acc.push('/');
         let href = html_escape(&acc);
@@ -365,14 +364,12 @@ fn days_to_ymd(days: u32) -> (u32, u32, u32) {
     let era = z / 146097;
     let doe = z % 146097;
     let yoe = (doe - doe / 1460 + doe / 36524 - doe / 146096) / 365;
-    let y = (yoe as u32) + era * 400;
+    let y = yoe + era * 400;
     let doy = doe - (365 * yoe + yoe / 4 - yoe / 100);
     let mp = (5 * doy + 2) / 153;
     let d = doy - (153 * mp + 2) / 5 + 1;
     let m = if mp < 10 { mp + 3 } else { mp - 9 };
-    let month = m as u32;
-    let day = d as u32;
-    (y, month, day)
+    (y, m, d)
 }
 
 fn format_size(n: u64) -> String {
@@ -416,6 +413,7 @@ fn format_entry_row(name: &str, href: &str, is_dir: bool, size: &str, date: &str
 /// - Provides directory listings if no `index.html` exists.
 /// - Falls back to `index.html` if in SPA mode.
 /// - Optionally injects a live reload script when `--watch` is enabled.
+/// - When `--watch` is on, caches HTML bodies with that script per file path to avoid repeated read+inject work.
 pub async fn serve_file(
     req: HttpRequest,
     data: web::Data<AppState>,
