@@ -92,9 +92,7 @@ async fn serve_file_rejects_parent_dir() {
         .app_data(app_state)
         .route("/{_:.*}", web::get().to(serve_file));
     let mut app = test::init_service(app).await;
-    let req = test::TestRequest::get()
-        .uri("/../Cargo.toml")
-        .to_request();
+    let req = test::TestRequest::get().uri("/../Cargo.toml").to_request();
     let resp = test::call_service(&mut app, req).await;
     assert_eq!(resp.status(), actix_web::http::StatusCode::NOT_FOUND);
 }
@@ -130,7 +128,11 @@ async fn serve_file_redirects_directory_without_slash() {
 
     let temp_dir = TempDir::new().unwrap();
     fs::create_dir(temp_dir.path().join("docs")).unwrap();
-    fs::write(temp_dir.path().join("docs").join("index.html"), b"<p>hi</p>").unwrap();
+    fs::write(
+        temp_dir.path().join("docs").join("index.html"),
+        b"<p>hi</p>",
+    )
+    .unwrap();
     let static_dir = Arc::new(temp_dir.path().to_path_buf());
     let (tx, _) = broadcast::channel::<()>(16);
     let app_state = web::Data::new(AppState {
@@ -210,7 +212,10 @@ fn validate_static_root_unit() {
     assert!(validate_static_root(temp.path()).is_ok());
 
     let missing = temp.path().join("nope_not_here");
-    assert_eq!(validate_static_root(&missing), Err(StaticDirError::NotFound));
+    assert_eq!(
+        validate_static_root(&missing),
+        Err(StaticDirError::NotFound)
+    );
 
     let file_path = temp.path().join("file.txt");
     fs::write(&file_path, b"x").unwrap();
