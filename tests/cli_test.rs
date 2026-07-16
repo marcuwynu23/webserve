@@ -66,7 +66,9 @@ fn test_cli_options_open_and_no_redirect_dir_slash() {
 fn test_cli_short_flags() {
     let temp_dir = TempDir::new().unwrap();
     let dir_str = temp_dir.path().to_str().unwrap();
-    let args = vec!["webserve", "-p", "4000", "-h", "0.0.0.0", "-d", dir_str, "-w"];
+    let args = vec![
+        "webserve", "-p", "4000", "-h", "0.0.0.0", "-d", dir_str, "-w",
+    ];
     let options = ServeOptions::from_iter(args.iter());
     assert_eq!(options.port, 4000);
     assert_eq!(options.host, "0.0.0.0");
@@ -79,14 +81,7 @@ fn test_cli_combined_options() {
     let temp_dir = TempDir::new().unwrap();
     let dir_str = temp_dir.path().to_str().unwrap();
     let args = vec![
-        "webserve",
-        "--dir",
-        dir_str,
-        "--port",
-        "5000",
-        "--spa",
-        "--watch",
-        "--open",
+        "webserve", "--dir", dir_str, "--port", "5000", "--spa", "--watch", "--open",
     ];
     let options = ServeOptions::from_iter(args.iter());
     assert_eq!(options.port, 5000);
